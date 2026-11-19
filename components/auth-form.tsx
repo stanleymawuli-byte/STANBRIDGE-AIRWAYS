@@ -81,6 +81,13 @@ export function AuthForm({ mode }: AuthFormProps) {
         setVerificationMessage("Account created. Check your email for a verification link before signing in.");
         return;
       }
+
+      if (result.data && (result.data as { twoFactorRedirect?: boolean }).twoFactorRedirect) {
+        router.replace("/two-factor");
+        router.refresh();
+        return;
+      }
+
       router.replace("/account");
       router.refresh();
     } catch (error) {
