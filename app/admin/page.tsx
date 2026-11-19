@@ -34,7 +34,7 @@ export default async function AdminPage() {
           <SignOutButton />
         </div>
       </header>
-      <AdminDashboard role={session.user.role} />
+      <AdminDashboard role={session.user.role} currentUserId={session.user.id} />
     </main>
   );
 }

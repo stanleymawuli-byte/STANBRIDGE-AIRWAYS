@@ -90,6 +90,46 @@ real users, replace it with a persistent database and preserve/import any existi
 user data before changing `DATABASE_URL`. Future pushes to the connected branch
 deploy automatically.
 
+### Reports, configuration restore points, and demo staff
+
+The staff dashboard provides separate overview, booking, and reports tabs.
+Reports aggregate booking status, popular routes, and payment totals by currency
+and status. Super-admins also have user/role management and a configuration tab.
+Deleting a user hard-deletes the account and its cascaded booking records; the
+dashboard prevents self-deletion and removal of the final super-admin.
+
+Configuration backups include only the support email, booking hold duration, and
+maintenance-mode setting. Restoring a configuration backup does not write to user,
+password, booking, passenger, or payment tables. These snapshots are not full
+database backups. Production disaster recovery requires an independently tested
+PostgreSQL backup and restore plan.
+
+To create four **local demo** staff accounts, set four distinct email addresses
+and four distinct strong passwords in the optional `DEMO_*` variables in
+`.env.local`, apply migrations, then run `npm run db:seed:demo`. The script creates
+a super-admin, operations manager, booking agent, and finance officer; it stores
+only salted password hashes and never prints passwords. Existing matching accounts
+are left unchanged. Never use demo credentials in production, and enable 2FA on
+staff accounts before demonstrations.
+
+The responsive website includes an installable mobile-web manifest. It is not a
+native iOS/Android store app; publish native apps separately if app-store
+distribution is required.
+
+### Security and AWS
+
+Password registration requires at least 12 characters, rejects common passwords
+using a local denylist, and is rate-limited; database password hashes use per-password salts
+and a separate HMAC pepper. Two-factor authentication uses authenticator codes
+and one-time recovery codes. Use HTTPS and keep both authentication secrets
+independently generated and outside source control.
+
+An AWS deployment guide is in [docs/aws-deployment.md](./docs/aws-deployment.md).
+No AWS account or cloud resources have been created by this project. Cloud
+deployment must be completed from an account you control; never send cloud
+credentials in chat. Generate Kleopatra OpenPGP keys on your own computer and
+keep the private key offline.
+
 The deployment includes passenger registration, booking, sandbox payment, staff
 dashboard and account features only when PostgreSQL, required secrets, and Resend
 email configuration are set in the hosting environment. Amadeus order creation and

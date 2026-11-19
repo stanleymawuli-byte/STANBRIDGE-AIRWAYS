@@ -6,8 +6,10 @@ import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { prismaAdapter } from "@better-auth/prisma-adapter";
 import { nextCookies } from "better-auth/next-js";
 import { twoFactor } from "better-auth/plugins";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetEmail, sendVerificationEmail } from "@/lib/email";
+import { isCommonPassword } from "@/lib/password-policy";
 
 export class AuthConfigurationError extends Error {
   constructor(message: string) {
@@ -130,6 +132,18 @@ function createAuth() {
         "/sign-in/email": { window: 60, max: 5 },
         "/sign-up/email": { window: 60, max: 3 },
       },
+    },
+    hooks: {
+      before: createAuthMiddleware(async (context) => {
+        const password = context.body?.password;
+        if (context.path === "/sign-up/email" && typeof password === "string") {
+          if (isCommonPassword(password)) {
+            throw new APIError("BAD_REQUEST", {
+              message: "Choose a less common password; dictionary passwords are not allowed.",
+            });
+          }
+        }
+      }),
     },
     advanced: {
       useSecureCookies: appUrl.protocol === "https:",

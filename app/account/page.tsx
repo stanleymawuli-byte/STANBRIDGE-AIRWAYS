@@ -65,6 +65,10 @@ export default async function AccountPage({
     include: { passengers: true, ticket: true },
     orderBy: { createdAt: "desc" },
   });
+  const supportEmail = (await prisma.systemConfiguration.findUnique({
+    where: { id: "primary" },
+    select: { supportEmail: true },
+  }))?.supportEmail ?? "support@stanbridgeairways.com";
 
   return (
     <main className="auth-page">
@@ -78,6 +82,7 @@ export default async function AccountPage({
         <TwoFactorSettings enabled={session.user.twoFactorEnabled ?? false} />
         <p className="auth-note">
           Booking records and ticket management are available for confirmed journeys.
+          {" "}Need help? <a href={`mailto:${supportEmail}`}>{supportEmail}</a>
         </p>
         <div className="booking-list">
           {bookings.length === 0 ? (
