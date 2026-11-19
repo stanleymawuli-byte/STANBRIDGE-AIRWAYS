@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import QRCode from "qrcode";
 import { authClient } from "@/lib/auth-client";
-import { ShieldCheck, ShieldAlert, Copy, Check, Eye, EyeOff } from "lucide-react";
+import { ShieldCheck, ShieldAlert, Copy, Check, Eye, EyeOff, QrCode } from "lucide-react";
 
 type Enrollment = {
   totpURI: string;
@@ -12,6 +13,7 @@ type Enrollment = {
 export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
   const [isEnabled, setIsEnabled] = useState(enabled);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [message, setMessage] = useState("");
@@ -21,6 +23,8 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
   const [showDisableForm, setShowDisableForm] = useState(false);
   const [showBackupCodes, setShowBackupCodes] = useState(false);
   const [copiedCodes, setCopiedCodes] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [setupTab, setSetupTab] = useState<"qr" | "key">("qr");
 
   async function beginEnrollment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,6 +40,19 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
       if (result.error) throw new Error(result.error.message ?? "Could not start authenticator setup.");
       if (result.data.method !== "totp") throw new Error("Authenticator app setup was not returned.");
       setEnrollment({ totpURI: result.data.totpURI, backupCodes: result.data.backupCodes });
+      try {
+        const qrUrl = await QRCode.toDataURL(result.data.totpURI, {
+          width: 220,
+          margin: 1.5,
+          color: {
+            dark: "#071d32",
+            light: "#ffffff",
+          },
+        });
+        setQrCodeDataUrl(qrUrl);
+      } catch (qrErr) {
+        console.error("Failed to generate QR code", qrErr);
+      }
       setPassword("");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not start authenticator setup.");
@@ -73,6 +90,7 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
       if (result.error) throw new Error(result.error.message ?? "Could not disable two-factor authentication.");
       setIsEnabled(false);
       setEnrollment(null);
+      setQrCodeDataUrl("");
       setShowDisableForm(false);
       setShowBackupCodes(false);
       setPassword("");
@@ -89,6 +107,14 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
     navigator.clipboard.writeText(enrollment.backupCodes.join("\n"));
     setCopiedCodes(true);
     setTimeout(() => setCopiedCodes(false), 2500);
+  }
+
+  function copySetupKey() {
+    if (!enrollment?.totpURI) return;
+    const key = decodeURIComponent(new URL(enrollment.totpURI).searchParams.get("secret") ?? "");
+    navigator.clipboard.writeText(key);
+    setCopiedKey(true);
+    setTimeout(() => setCopiedKey(false), 2500);
   }
 
   return (
@@ -134,7 +160,7 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
       {/* Start setup password confirmation */}
       {!isEnabled && !enrollment && showSetup && (
         <form className="mt-4 pt-4 border-t border-[#eeece6] space-y-3" onSubmit={beginEnrollment}>
-          <p className="text-xs text-[#071d32] font-medium">Confirm your password to generate your authenticator setup key:</p>
+          <p className="text-xs text-[#071d32] font-medium">Confirm your password to generate your authenticator setup key & QR code:</p>
           <div className="flex gap-2">
             <input 
               autoComplete="current-password" 
@@ -165,21 +191,85 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
 
       {/* Enrollment QR / Secret display */}
       {!isEnabled && enrollment && (
-        <div className="mt-4 pt-4 border-t border-[#eeece6] space-y-3">
-          <div className="p-3 bg-[#f8f7f4] border border-[#e6e3dc] rounded text-xs">
-            <p className="font-semibold text-[#071d32] mb-1">1. Enter this setup key in your Authenticator app:</p>
-            <div className="flex items-center gap-2 mt-1">
-              <code className="flex-1 p-2 bg-white border border-[#e1dfd8] rounded font-mono text-[11px] text-[#071d32] select-all break-all">
-                {decodeURIComponent(new URL(enrollment.totpURI).searchParams.get("secret") ?? "")}
-              </code>
-            </div>
-            <p className="text-[11px] text-[#74818b] mt-1.5">
-              Works with Google Authenticator, Microsoft Authenticator, or iPhone Passwords.
-            </p>
+        <div className="mt-4 pt-4 border-t border-[#eeece6] space-y-4">
+          {/* Method Selector: QR Code vs Setup Key */}
+          <div className="flex border-b border-[#e8e4da] gap-4">
+            <button
+              type="button"
+              onClick={() => setSetupTab("qr")}
+              className={`pb-2 text-xs font-semibold flex items-center gap-1.5 transition ${
+                setupTab === "qr"
+                  ? "border-b-2 border-[#071d32] text-[#071d32]"
+                  : "text-[#74818b] hover:text-[#071d32]"
+              }`}
+            >
+              <QrCode className="w-3.5 h-3.5" /> Scan QR Code
+            </button>
+            <button
+              type="button"
+              onClick={() => setSetupTab("key")}
+              className={`pb-2 text-xs font-semibold flex items-center gap-1.5 transition ${
+                setupTab === "key"
+                  ? "border-b-2 border-[#071d32] text-[#071d32]"
+                  : "text-[#74818b] hover:text-[#071d32]"
+              }`}
+            >
+              <Copy className="w-3.5 h-3.5" /> Manual Setup Key
+            </button>
           </div>
 
-          <form className="space-y-2" onSubmit={confirmEnrollment}>
-            <p className="font-semibold text-[#071d32] text-xs">2. Enter the 6-digit code shown in the app:</p>
+          {/* QR Code Tab View */}
+          {setupTab === "qr" && (
+            <div className="p-4 bg-white border border-[#e8e4da] rounded-xl text-center space-y-3">
+              {qrCodeDataUrl ? (
+                <div className="inline-block p-3 bg-white border-2 border-[#071d32] rounded-xl shadow-sm">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={qrCodeDataUrl}
+                    alt="Scan StanBridge Airways 2FA QR Code"
+                    className="w-48 h-48 mx-auto object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="w-48 h-48 mx-auto flex items-center justify-center bg-gray-50 text-xs text-gray-500 rounded-xl border border-gray-200">
+                  Generating QR code...
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-semibold text-[#071d32]">Scan with Google Authenticator, Microsoft, or Phone Camera</p>
+                <p className="text-[11px] text-[#74818b] mt-0.5">
+                  Open your authenticator app, tap <strong>+ (Add Account)</strong> and point your camera at this QR code.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Manual Setup Key Tab View */}
+          {setupTab === "key" && (
+            <div className="p-3.5 bg-[#f8f7f4] border border-[#e6e3dc] rounded-xl text-xs space-y-2.5">
+              <p className="font-semibold text-[#071d32]">Enter this key manually in your authenticator app:</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 p-2 bg-white border border-[#e1dfd8] rounded font-mono text-[11px] text-[#071d32] select-all break-all">
+                  {decodeURIComponent(new URL(enrollment.totpURI).searchParams.get("secret") ?? "")}
+                </code>
+                <button
+                  type="button"
+                  onClick={copySetupKey}
+                  className="px-3 py-2 bg-white border border-[#e1dfd8] rounded text-[11px] font-medium text-[#071d32] hover:bg-gray-50 flex items-center gap-1 shrink-0"
+                >
+                  {copiedKey ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedKey ? "Copied" : "Copy Key"}
+                </button>
+              </div>
+              <p className="text-[11px] text-[#74818b]">
+                Account Name: <strong>StanBridge Airways</strong>
+              </p>
+            </div>
+          )}
+
+          {/* Verification Code Submission */}
+          <form className="space-y-2.5 bg-[#fbfaf8] p-4 border border-[#eee9de] rounded-xl" onSubmit={confirmEnrollment}>
+            <p className="font-semibold text-[#071d32] text-xs">Enter the 6-digit verification code generated by the app:</p>
             <div className="flex gap-2">
               <input 
                 autoComplete="one-time-code" 
@@ -190,12 +280,12 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
                 required 
                 placeholder="000 000"
                 value={code} 
-                className="w-40 text-sm tracking-widest text-center px-3 py-2 border border-[#e1dfd8] rounded outline-none focus:border-[#c9a66b]"
+                className="w-44 text-sm tracking-widest text-center px-3 py-2 border border-[#e1dfd8] rounded outline-none focus:border-[#c9a66b] bg-white font-mono"
               />
               <button 
                 type="submit" 
                 disabled={loading}
-                className="px-4 py-2 bg-[#071d32] text-white text-xs font-medium rounded hover:bg-[#11314f] transition disabled:opacity-50"
+                className="px-4 py-2 bg-[#071d32] text-white text-xs font-semibold rounded hover:bg-[#11314f] transition disabled:opacity-50"
               >
                 {loading ? "Verifying..." : "Verify & Activate"}
               </button>
