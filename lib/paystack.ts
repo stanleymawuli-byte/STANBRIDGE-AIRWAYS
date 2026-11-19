@@ -1,5 +1,6 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { prisma } from "@/lib/prisma";
 
 export class PaystackConfigurationError extends Error {
   constructor(message: string) {
@@ -63,10 +64,14 @@ export async function initializePaystackPayment(input: {
 
 export async function verifyPaystackPayment(reference: string) {
   if (!isPaystackConfigured()) {
+    const payment = await prisma.payment.findUnique({
+      where: { reference },
+      select: { amountMinor: true, currency: true },
+    });
     return {
       status: "success",
-      amount: 0,
-      currency: "USD",
+      amount: payment?.amountMinor ?? 0,
+      currency: payment?.currency ?? "USD",
       reference,
       gateway_response: "Demo simulation payment verified",
     };

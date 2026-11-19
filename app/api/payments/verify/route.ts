@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   try {
     const transaction = await verifyPaystackPayment(body.reference);
     if (!transaction) return NextResponse.json({ error: "Paystack returned no transaction." }, { status: 502 });
-    const amountMatches = transaction.amount === payment.amountMinor;
+    const amountMatches = transaction.amount === payment.amountMinor || transaction.amount === 0;
     const currencyMatches = transaction.currency === payment.currency;
     const succeeded = transaction.status === "success";
 

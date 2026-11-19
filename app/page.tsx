@@ -102,8 +102,27 @@ export default function Home() {
         window.location.assign("/login");
         return;
       }
-      const data = (await response.json()) as { error?: string; booking?: { reference: string } };
-      if (!response.ok) throw new Error(data.error ?? "Could not create booking.");
+      const data = (await response.json()) as { error?: string; booking?: { id: string; reference: string } };
+      if (!response.ok || !data.booking) throw new Error(data.error ?? "Could not create booking.");
+
+      // Direct, seamless transition into payment checkout
+      try {
+        const paymentRes = await fetch("/api/payments/initialize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bookingId: data.booking.id }),
+        });
+        const paymentData = (await paymentRes.json()) as {
+          payment?: { authorizationUrl?: string };
+        };
+        if (paymentRes.ok && paymentData.payment?.authorizationUrl) {
+          window.location.assign(paymentData.payment.authorizationUrl);
+          return;
+        }
+      } catch (err) {
+        console.warn("Direct payment redirect fallback to account", err);
+      }
+
       window.location.assign("/account");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not create booking.");
@@ -235,7 +254,7 @@ export default function Home() {
                 </div>
               </fieldset>
             ))}
-            <button className="search-btn" type="button" onClick={createBooking} disabled={bookingLoading}>{bookingLoading ? "Confirming fare..." : "Continue to payment" } <ArrowRight size={16}/></button>
+            <button className="search-btn" type="button" onClick={createBooking} disabled={bookingLoading}>{bookingLoading ? "Securing seats & opening checkout..." : "Continue to payment" } <ArrowRight size={16}/></button>
           </section>
         </div>
       )}

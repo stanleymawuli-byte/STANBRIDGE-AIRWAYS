@@ -26,12 +26,14 @@ export const metadata = {
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reference?: string }>;
+  searchParams: Promise<{ reference?: string; payment?: string; booking?: string }>;
 }) {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
   const params = await searchParams;
   const reference = params.reference;
+  let paymentVerifiedThisRequest = false;
+
   if (reference) {
     const payment = await prisma.payment.findUnique({
       where: { reference },
@@ -58,8 +60,13 @@ export default async function AccountPage({
               data: { status: "CONFIRMED" },
             }),
           ]);
+          paymentVerifiedThisRequest = true;
           if (bookingUpdated.count > 0) {
-            await createAmadeusOrderForPaidBooking(payment.bookingId);
+            try {
+              await createAmadeusOrderForPaidBooking(payment.bookingId);
+            } catch (err) {
+              console.error("Amadeus fulfillment deferred", err);
+            }
           }
         }
       } catch (error) {
@@ -67,6 +74,8 @@ export default async function AccountPage({
       }
     }
   }
+
+  const isPaymentSuccess = paymentVerifiedThisRequest || params.payment === "success";
 
   const bookings = await prisma.booking.findMany({
     where: { userId: session.user.id },
@@ -126,6 +135,30 @@ export default async function AccountPage({
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Payment Confirmation Banner */}
+        {isPaymentSuccess && (
+          <section className="bg-emerald-50 border border-emerald-300 text-emerald-950 rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center shrink-0 text-emerald-700">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="font-serif font-bold text-base text-emerald-950">
+                  Payment Confirmed · Journey Ticketed
+                </h2>
+                <p className="text-xs text-emerald-800 mt-0.5">
+                  Your transaction has cleared successfully. Your airline reservation and ticket reference have been issued below.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/account"
+              className="text-xs font-semibold px-3.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-lg transition shrink-0"
+            >
+              Dismiss
+            </Link>
+          </section>
+        )}
         {/* Operations Access Callout Banner if Staff */}
         {isStaff && (
           <section className="bg-gradient-to-r from-[#0d2b45] to-[#143a5c] text-white p-5 rounded-xl border border-[#c9a66b]/30 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">

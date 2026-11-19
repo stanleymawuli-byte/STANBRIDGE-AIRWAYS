@@ -21,14 +21,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Payment is only available for pending bookings." }, { status: 409 });
   }
   if (booking.expiresAt < new Date()) {
-    await prisma.booking.update({ where: { id: booking.id }, data: { status: "EXPIRED" } });
-    return NextResponse.json({ error: "This booking has expired." }, { status: 409 });
+    if (!isPaystackConfigured()) {
+      // In demo / test mode, extend the expiration timer so users are not blocked by the 30-min window
+      const renewedExpiresAt = new Date(Date.now() + 30 * 60 * 1000);
+      await prisma.booking.update({ where: { id: booking.id }, data: { expiresAt: renewedExpiresAt } });
+      booking.expiresAt = renewedExpiresAt;
+    } else {
+      await prisma.booking.update({ where: { id: booking.id }, data: { status: "EXPIRED" } });
+      return NextResponse.json({ error: "This booking has expired. Please select a fresh flight to continue." }, { status: 409 });
+    }
   }
 
-  const { currency } = paystackConfiguration();
-  if (isPaystackConfigured() && booking.fareCurrency !== currency) {
+  const { currency: defaultCurrency } = paystackConfiguration();
+  const currency = isPaystackConfigured() ? defaultCurrency : (booking.fareCurrency || defaultCurrency);
+  if (isPaystackConfigured() && booking.fareCurrency !== defaultCurrency) {
     return NextResponse.json(
-      { error: `Paystack is configured for ${currency}, but this fare is ${booking.fareCurrency}. Currency conversion is not configured.` },
+      { error: `Paystack is configured for ${defaultCurrency}, but this fare is ${booking.fareCurrency}. Currency conversion is not configured.` },
       { status: 409 },
     );
   }
@@ -36,13 +44,17 @@ export async function POST(request: NextRequest) {
   const amountMinor = Math.round(Number(booking.fareAmount) * 100);
   const reference = `SBP-${randomBytes(8).toString("hex").toUpperCase()}`;
 
+  const appBaseUrl =
+    process.env.APP_URL?.replace(/\/$/, "") ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+
   try {
     const initialized = await initializePaystackPayment({
       email,
       amountMinor,
       currency,
       reference,
-      callbackUrl: `${process.env.APP_URL?.replace(/\/$/, "")}/account?payment=success&booking=${booking.id}`,
+      callbackUrl: `${appBaseUrl}/account?payment=success&booking=${booking.id}`,
       metadata: { bookingId: booking.id, bookingReference: booking.reference, userId: session.user.id },
     });
     const payment = await prisma.payment.create({
