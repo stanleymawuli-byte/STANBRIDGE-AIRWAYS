@@ -25,7 +25,8 @@ npm run dev
 ```
 
 Open http://localhost:3000. Create a passenger account at `/register`; sign in at `/login`.
-The protected `/account` page confirms the session.
+The protected `/account` page confirms the session. Flight search and booking are
+available to signed-in passengers from `/account`, not on the public landing page.
 
 Passwords are HMAC-peppered with `PASSWORD_PEPPER`, then hashed with Better Auth's
 Scrypt implementation, which generates a unique random salt per password. The pepper

@@ -1,4 +1,6 @@
+import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { getAuth } from "@/lib/auth";
 import {
   AmadeusConfigurationError,
   searchFlightOffers,
@@ -14,6 +16,11 @@ const travelClasses: Record<string, string> = {
 };
 
 export async function GET(request: NextRequest) {
+  const session = await getAuth().api.getSession({ headers: await headers() });
+  if (!session) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
   const parameters = request.nextUrl.searchParams;
   const origin = parameters.get("origin")?.trim().toUpperCase();
   const destination = parameters.get("destination")?.trim().toUpperCase();

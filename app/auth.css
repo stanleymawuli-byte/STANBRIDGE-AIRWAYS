@@ -646,6 +646,25 @@
   margin-top: 24px;
 }
 
+.account-page {
+  justify-content: flex-start;
+  padding: 38px 5%;
+}
+
+.account-card {
+  width: min(100%, 1120px);
+}
+
+.account-flight-search {
+  margin: 24px -38px 0;
+  border-top: 1px solid #eeece6;
+}
+
+.account-flight-search .booking-section {
+  padding-top: 38px;
+  padding-bottom: 38px;
+}
+
 .booking-list {
   display: grid;
   gap: 12px;
@@ -741,6 +760,15 @@
 
   .auth-card {
     padding: 28px 22px;
+  }
+
+  .account-page {
+    padding: 24px 12px;
+  }
+
+  .account-flight-search {
+    margin-right: -22px;
+    margin-left: -22px;
   }
 
   .auth-card h1 {
