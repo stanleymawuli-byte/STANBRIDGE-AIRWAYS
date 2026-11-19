@@ -40,11 +40,12 @@ environment variable. Do not run development migrations against production.
 Email verification and password recovery use Resend. Set `RESEND_API_KEY` and
 `EMAIL_FROM` in `.env.local`; the sender domain must be verified with Resend.
 New accounts must verify their email before signing in. Verification and password
-reset links expire after one hour. Two-factor authentication is optional for all
-accounts. Users can enroll an authenticator app from their passenger account and
-use one-time backup codes if the device is unavailable. Sign-in requires a valid
-authenticator or backup code when 2FA is enabled. Public registration always
-assigns the `CUSTOMER` role; it cannot grant administrator access.
+reset links expire after one hour. Every account must set up Google Authenticator
+(or another compatible TOTP app) after the first verified sign-in; account,
+booking, payment, and staff APIs remain unavailable until enrollment is complete.
+Each sign-in then requires a valid authenticator code or one-time backup code.
+Public registration always assigns the `CUSTOMER` role; it cannot grant
+administrator access.
 
 ### Admin dashboard
 
@@ -110,8 +111,8 @@ and four distinct strong passwords in the optional `DEMO_*` variables in
 `.env.local`, apply migrations, then run `npm run db:seed:demo`. The script creates
 a super-admin, operations manager, booking agent, and finance officer; it stores
 only salted password hashes and never prints passwords. Existing matching accounts
-are left unchanged. Never use demo credentials in production, and enable 2FA on
-staff accounts before demonstrations.
+are left unchanged. Never use demo credentials in production; each account must
+complete Google Authenticator setup before it can access the application.
 
 The responsive website includes an installable mobile-web manifest. It is not a
 native iOS/Android store app; publish native apps separately if app-store
@@ -120,10 +121,10 @@ distribution is required.
 ### Security and AWS
 
 Password registration requires at least 12 characters, rejects common passwords
-using a local denylist, and is rate-limited; database password hashes use per-password salts
-and a separate HMAC pepper. Two-factor authentication uses authenticator codes
-and one-time recovery codes. Use HTTPS and keep both authentication secrets
-independently generated and outside source control.
+using a local denylist, and is rate-limited; database password hashes use
+per-password salts and a separate HMAC pepper. Required two-factor sign-in uses
+Google Authenticator-compatible TOTP and one-time recovery codes. Use HTTPS and
+keep both authentication secrets independently generated and outside source control.
 
 An AWS deployment guide is in [docs/aws-deployment.md](./docs/aws-deployment.md).
 No AWS account or cloud resources have been created by this project. Cloud
@@ -153,7 +154,7 @@ Provider credentials, `BETTER_AUTH_SECRET`, `PASSWORD_PEPPER`, and database cred
 
 ## Current implementation boundary
 
-The project includes the original landing page, server-side Amadeus flight search, repricing and flight-order creation/retrieval, a PostgreSQL/Prisma booking schema, customer registration/login, verified-email flows, password recovery, optional authenticator-based two-factor authentication, database-backed sessions and rate limiting, passenger account management, Paystack sandbox payment, and a role-gated staff dashboard. Configure `AMADEUS_ENV=test`, `AMADEUS_CLIENT_ID`, and `AMADEUS_CLIENT_SECRET` to enable test inventory and orders. Apply database migrations with `npm run db:migrate:deploy`, then provision the first super-admin as described above. Amadeus orders are reservations/PNRs, not e-tickets; airline ticket issuance is not supported by this integration. Order cancellation is intentionally not exposed until a refund flow is implemented. A successful Paystack charge with an Amadeus order failure remains a paid booking requiring manual review; an interrupted order request also needs reconciliation before any retry to avoid duplicate reservations.
+The project includes the original landing page, server-side Amadeus flight search, repricing and flight-order creation/retrieval, a PostgreSQL/Prisma booking schema, customer registration/login, verified-email flows, password recovery, mandatory Google Authenticator-compatible two-factor authentication, database-backed sessions and rate limiting, passenger account management, Paystack sandbox payment, and a role-gated staff dashboard. Configure `AMADEUS_ENV=test`, `AMADEUS_CLIENT_ID`, and `AMADEUS_CLIENT_SECRET` to enable test inventory and orders. Apply database migrations with `npm run db:migrate:deploy`, then provision the first super-admin as described above. Amadeus orders are reservations/PNRs, not e-tickets; airline ticket issuance is not supported by this integration. Order cancellation is intentionally not exposed until a refund flow is implemented. A successful Paystack charge with an Amadeus order failure remains a paid booking requiring manual review; an interrupted order request also needs reconciliation before any retry to avoid duplicate reservations.
 
 ## Development phases
 

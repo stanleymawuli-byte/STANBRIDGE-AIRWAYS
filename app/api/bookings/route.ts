@@ -1,8 +1,7 @@
-import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
-import { getAuth } from "@/lib/auth";
+import { getVerifiedUserSession } from "@/lib/user-auth";
 import { prisma } from "@/lib/prisma";
 import { getSystemConfiguration } from "@/lib/admin-config";
 import { isAmadeusOffer, isInternationalPhoneNumber, priceFlightOffer } from "@/lib/amadeus";
@@ -12,8 +11,8 @@ function reference() {
 }
 
 export async function GET() {
-  const session = await getAuth().api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  const session = await getVerifiedUserSession();
+  if (!session) return NextResponse.json({ error: "Sign in and complete Google Authenticator setup to continue." }, { status: 401 });
 
   const bookings = await prisma.booking.findMany({
     where: { userId: session.user.id },
@@ -24,8 +23,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAuth().api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  const session = await getVerifiedUserSession();
+  if (!session) return NextResponse.json({ error: "Sign in and complete Google Authenticator setup to continue." }, { status: 401 });
   const configuration = await getSystemConfiguration();
   if (configuration.maintenanceMode) {
     return NextResponse.json({ error: "Booking is temporarily unavailable while maintenance is in progress." }, { status: 503 });

@@ -15,6 +15,7 @@ export const metadata = {
 export default async function AdminPage() {
   const authenticatedSession = await getAuth().api.getSession({ headers: await headers() });
   if (!authenticatedSession) redirect("/login");
+  if (!authenticatedSession.user.twoFactorEnabled) redirect("/two-factor/setup");
   if (!staffRoles.includes(authenticatedSession.user.role as (typeof staffRoles)[number])) {
     redirect("/account");
   }

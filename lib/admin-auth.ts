@@ -1,7 +1,6 @@
 import "server-only";
 
-import { headers } from "next/headers";
-import { getAuth } from "@/lib/auth";
+import { getVerifiedUserSession } from "@/lib/user-auth";
 
 export const staffRoles = [
   "SUPER_ADMIN",
@@ -13,7 +12,7 @@ export const staffRoles = [
 export type StaffRole = (typeof staffRoles)[number];
 
 export async function getStaffSession() {
-  const session = await getAuth().api.getSession({ headers: await headers() });
+  const session = await getVerifiedUserSession();
   const role = session?.user.role;
   if (!session || typeof role !== "string" || !staffRoles.includes(role as StaffRole)) return null;
   return {

@@ -1,13 +1,12 @@
-import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth } from "@/lib/auth";
+import { getVerifiedUserSession } from "@/lib/user-auth";
 import { prisma } from "@/lib/prisma";
 import { verifyPaystackPayment } from "@/lib/paystack";
 import { createAmadeusOrderForPaidBooking } from "@/lib/amadeus-orders";
 
 export async function POST(request: NextRequest) {
-  const session = await getAuth().api.getSession({ headers: await headers() });
-  if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  const session = await getVerifiedUserSession();
+  if (!session) return NextResponse.json({ error: "Sign in and complete Google Authenticator setup to continue." }, { status: 401 });
   const body = (await request.json()) as { reference?: string };
   if (!body.reference) return NextResponse.json({ error: "Payment reference is required." }, { status: 400 });
 

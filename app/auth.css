@@ -209,6 +209,16 @@
   font-size: 11px;
 }
 
+.security-continue {
+  margin-top: 16px;
+  border: 0;
+  background: var(--navy);
+  color: #fff;
+  padding: 12px 15px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
 .security-form button:disabled {
   cursor: wait;
   opacity: .65;

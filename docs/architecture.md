@@ -50,7 +50,7 @@ Use `.env.local` for local secrets and a managed secret store for deployments. `
 
 The app includes customer registration and recovery, salted Scrypt password hashes
 with a separate HMAC pepper, common-password rejection, database-backed
-rate-limits, authenticator-based optional 2FA, booking and payment flows, Amadeus
+rate-limits, mandatory Google Authenticator-compatible TOTP, booking and payment flows, Amadeus
 test integration, and a role-protected operations dashboard. Public sign-up can
 only create `CUSTOMER` accounts. The admin interface includes reports, hard
 account deletion with related-record cascade behavior, configurable booking

@@ -43,7 +43,7 @@ export function TwoFactorChallenge() {
         <p className="auth-intro">
           {backup
             ? "Enter one of your unused backup codes."
-            : "Enter the current code from your authenticator app."}
+            : "Enter the current code from Google Authenticator or your authenticator app."}
         </p>
         <form className="auth-form" onSubmit={submit}>
           <label>

@@ -73,7 +73,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
       if (isRegistering) {
         setVerificationPending(true);
-        setVerificationMessage("Account created. Check your email for a verification link before signing in.");
+        setVerificationMessage("Account created. Verify your email, then sign in and set up Google Authenticator to use your account.");
         return;
       }
       router.replace("/account");

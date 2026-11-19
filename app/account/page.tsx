@@ -23,6 +23,7 @@ export default async function AccountPage({
 }) {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
+  if (!session.user.twoFactorEnabled) redirect("/two-factor/setup");
   const params = await searchParams;
   const reference = params.reference;
   if (reference) {
@@ -80,7 +81,7 @@ export default async function AccountPage({
         {session.user.role && session.user.role !== "CUSTOMER" && (
           <p className="auth-switch"><Link href="/admin">Open operations dashboard</Link></p>
         )}
-        <TwoFactorSettings enabled={session.user.twoFactorEnabled ?? false} />
+        <TwoFactorSettings enabled={session.user.twoFactorEnabled ?? false} required />
         <p className="auth-note">
           Booking records and ticket management are available for confirmed journeys.
           {" "}Need help? <a href={`mailto:${supportEmail}`}>{supportEmail}</a>
