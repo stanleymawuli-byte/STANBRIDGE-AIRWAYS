@@ -73,11 +73,22 @@ npm run build
 
 ## Deploy to Render
 
-The root `render.yaml` configures a free Render web service for this Next.js app.
+The root `render.yaml` configures a free Render web service and a free PostgreSQL
+database for this Next.js app. The web service receives a database connection URL
+and independently generated authentication secrets; it applies pending Prisma
+migrations before starting the app.
+
 Push this project to GitHub, then in Render choose **New → Blueprint**, connect the
-repository, and apply the detected `render.yaml`. Render will build and deploy the
-site and provide a public `onrender.com` URL. Future pushes to the connected branch
-will deploy automatically.
+repository, and apply the detected `render.yaml`. During setup, provide `RESEND_API_KEY`
+and `EMAIL_FROM` privately in Render. The sender address must use a domain verified
+with Resend. Do not put these credentials in Git or share them in chat. Without
+working email delivery, registration and password recovery cannot complete.
+
+The configured free PostgreSQL database is for temporary testing only; Render's
+free databases expire and their data is not suitable for production accounts. For
+real users, replace it with a persistent database and preserve/import any existing
+user data before changing `DATABASE_URL`. Future pushes to the connected branch
+deploy automatically.
 
 The deployment includes passenger registration, booking, sandbox payment, staff
 dashboard and account features only when PostgreSQL, required secrets, and Resend
