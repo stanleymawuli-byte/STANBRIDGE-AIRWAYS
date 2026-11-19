@@ -83,7 +83,10 @@ export function AuthForm({ mode }: AuthFormProps) {
       }
 
       if (result.data && (result.data as { twoFactorRedirect?: boolean }).twoFactorRedirect) {
-        router.replace("/two-factor");
+        try {
+          sessionStorage.setItem("sb_auth_challenge_email", email.trim().toLowerCase());
+        } catch {}
+        router.replace(`/two-factor?email=${encodeURIComponent(email.trim().toLowerCase())}`);
         router.refresh();
         return;
       }
