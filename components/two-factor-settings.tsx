@@ -1,9 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import QRCode from "qrcode";
 import { authClient } from "@/lib/auth-client";
-import { ShieldCheck, ShieldAlert, Copy, Check, Eye, EyeOff, QrCode } from "lucide-react";
+import { 
+  ShieldCheck, 
+  ShieldAlert, 
+  Copy, 
+  Check, 
+  QrCode, 
+  KeyRound, 
+  Loader2, 
+  Smartphone 
+} from "lucide-react";
 
 type Enrollment = {
   totpURI: string;
@@ -16,15 +26,50 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [testCode, setTestCode] = useState("");
+  const [testStatus, setTestStatus] = useState<string>("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeQrLoading, setActiveQrLoading] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const [showDisableForm, setShowDisableForm] = useState(false);
-  const [showBackupCodes, setShowBackupCodes] = useState(false);
-  const [copiedCodes, setCopiedCodes] = useState(false);
+  const [showActiveQr, setShowActiveQr] = useState(false);
+  const [activeSecret, setActiveSecret] = useState<string>("");
   const [copiedKey, setCopiedKey] = useState(false);
   const [setupTab, setSetupTab] = useState<"qr" | "key">("qr");
+
+  // Fetch the active QR code and secret for already-enabled accounts
+  async function loadActiveQrCode() {
+    if (qrCodeDataUrl && activeSecret) {
+      setShowActiveQr(!showActiveQr);
+      return;
+    }
+
+    setActiveQrLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/auth/two-factor/qr-code");
+      const data = (await response.json()) as {
+        secret?: string;
+        totpURI?: string;
+        qrCodeDataUrl?: string;
+        error?: string;
+      };
+
+      if (!response.ok || !data.qrCodeDataUrl || !data.secret) {
+        throw new Error(data.error ?? "Could not load authenticator QR code.");
+      }
+
+      setQrCodeDataUrl(data.qrCodeDataUrl);
+      setActiveSecret(data.secret);
+      setShowActiveQr(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load QR code.");
+    } finally {
+      setActiveQrLoading(false);
+    }
+  }
 
   async function beginEnrollment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,10 +84,11 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
       });
       if (result.error) throw new Error(result.error.message ?? "Could not start authenticator setup.");
       if (result.data.method !== "totp") throw new Error("Authenticator app setup was not returned.");
+      
       setEnrollment({ totpURI: result.data.totpURI, backupCodes: result.data.backupCodes });
       try {
         const qrUrl = await QRCode.toDataURL(result.data.totpURI, {
-          width: 220,
+          width: 240,
           margin: 1.5,
           color: {
             dark: "#071d32",
@@ -50,6 +96,8 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
           },
         });
         setQrCodeDataUrl(qrUrl);
+        const secret = new URL(result.data.totpURI).searchParams.get("secret");
+        if (secret) setActiveSecret(secret);
       } catch (qrErr) {
         console.error("Failed to generate QR code", qrErr);
       }
@@ -72,11 +120,25 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
       setMessage("Two-factor authentication is now active. Please store your backup codes safely.");
       setIsEnabled(true);
       setShowSetup(false);
-      setShowBackupCodes(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not verify the authenticator code.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function testActiveTotp(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setTestStatus("");
+    try {
+      const result = await authClient.twoFactor.verifyTotp({ code: testCode.trim() });
+      if (result.error) {
+        setTestStatus("Code incorrect. Ensure your phone's clock is synced.");
+      } else {
+        setTestStatus("✓ Code verified! Google Authenticator is synced correctly.");
+      }
+    } catch {
+      setTestStatus("Code incorrect. Please try the next 30-second code.");
     }
   }
 
@@ -91,8 +153,9 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
       setIsEnabled(false);
       setEnrollment(null);
       setQrCodeDataUrl("");
+      setActiveSecret("");
       setShowDisableForm(false);
-      setShowBackupCodes(false);
+      setShowActiveQr(false);
       setPassword("");
       setMessage("Two-factor authentication has been disabled.");
     } catch (cause) {
@@ -102,31 +165,26 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
     }
   }
 
-  function copyAllCodes() {
-    if (!enrollment?.backupCodes) return;
-    navigator.clipboard.writeText(enrollment.backupCodes.join("\n"));
-    setCopiedCodes(true);
-    setTimeout(() => setCopiedCodes(false), 2500);
-  }
-
   function copySetupKey() {
-    if (!enrollment?.totpURI) return;
-    const key = decodeURIComponent(new URL(enrollment.totpURI).searchParams.get("secret") ?? "");
+    const key = activeSecret || (enrollment?.totpURI ? decodeURIComponent(new URL(enrollment.totpURI).searchParams.get("secret") ?? "") : "");
+    if (!key) return;
     navigator.clipboard.writeText(key);
     setCopiedKey(true);
     setTimeout(() => setCopiedKey(false), 2500);
   }
 
+  const currentSecretKey = activeSecret || (enrollment?.totpURI ? decodeURIComponent(new URL(enrollment.totpURI).searchParams.get("secret") ?? "") : "");
+
   return (
     <div className="security-card">
-      <div className="security-header">
-        <div className="security-icon-wrap">
-          {isEnabled ? <ShieldCheck className="w-5 h-5 text-emerald-500" /> : <ShieldAlert className="w-5 h-5 text-amber-500" />}
+      <div className="security-header flex items-start gap-3">
+        <div className="p-2.5 bg-[#f6f4ef] rounded-xl text-[#c9a66b] shrink-0 mt-0.5">
+          {isEnabled ? <ShieldCheck className="w-5 h-5 text-emerald-600" /> : <ShieldAlert className="w-5 h-5 text-amber-500" />}
         </div>
-        <div className="security-title-info">
+        <div className="flex-1">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold tracking-wide text-[#071d32]">Two-Factor Authentication</h3>
-            <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
+            <span className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full ${
               isEnabled ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-600"
             }`}>
               {isEnabled ? "Active" : "Disabled"}
@@ -134,30 +192,197 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
           </div>
           <p className="text-xs text-[#74818b] mt-0.5">
             {isEnabled 
-              ? "Your account is protected with Google Authenticator or an Apple Keychain authenticator app." 
+              ? "Your account is protected with Google Authenticator, Microsoft Authenticator, or Apple Keychain." 
               : "Optional. Add an extra layer of verification using an authenticator app (Google Authenticator, Microsoft, or Apple)."}
           </p>
         </div>
       </div>
 
-      {message && <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded" role="status">{message}</div>}
-      {error && <div className="mt-3 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded" role="alert">{error}</div>}
+      {message && <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg" role="status">{message}</div>}
+      {error && <div className="mt-3 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg" role="alert">{error}</div>}
 
-      {/* When disabled */}
+      {/* 1. WHEN ENABLED: Actions to View/Scan QR Code or Disable */}
+      {isEnabled && (
+        <div className="mt-4 pt-3 border-t border-[#eeece6] space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={loadActiveQrCode}
+              disabled={activeQrLoading}
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-[#071d32] hover:bg-[#123352] text-white text-xs font-semibold rounded-lg shadow-sm transition disabled:opacity-50"
+            >
+              {activeQrLoading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#c9a66b]" />
+                  <span>Loading QR Code...</span>
+                </>
+              ) : (
+                <>
+                  <QrCode className="w-4 h-4 text-[#c9a66b]" />
+                  <span>{showActiveQr ? "Hide QR Code" : "Scan QR Code with Google Authenticator"}</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowDisableForm(!showDisableForm)}
+              className="text-xs text-rose-600 hover:text-rose-700 underline underline-offset-2 ml-auto font-medium"
+            >
+              {showDisableForm ? "Cancel" : "Disable 2FA"}
+            </button>
+          </div>
+
+          {/* ACTIVE QR CODE DRAWER */}
+          {showActiveQr && (
+            <div className="bg-[#fbfaf8] border border-[#e8e4da] rounded-xl p-4 sm:p-5 space-y-4 animate-in fade-in slide-in-from-top-2">
+              <div className="flex border-b border-[#e6e3dc] pb-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setSetupTab("qr")}
+                  className={`text-xs font-bold pb-1 flex items-center gap-1.5 transition ${
+                    setupTab === "qr" ? "text-[#071d32] border-b-2 border-[#c9a66b]" : "text-[#74818b] hover:text-[#071d32]"
+                  }`}
+                >
+                  <QrCode className="w-3.5 h-3.5" /> Scan QR Code
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSetupTab("key")}
+                  className={`text-xs font-bold pb-1 flex items-center gap-1.5 transition ${
+                    setupTab === "key" ? "text-[#071d32] border-b-2 border-[#c9a66b]" : "text-[#74818b] hover:text-[#071d32]"
+                  }`}
+                >
+                  <KeyRound className="w-3.5 h-3.5" /> Manual Setup Key
+                </button>
+              </div>
+
+              {setupTab === "qr" && (
+                <div className="space-y-3 text-center">
+                  {qrCodeDataUrl ? (
+                    <div className="inline-block p-3 bg-white border border-[#e1dfd8] rounded-xl shadow-sm">
+                      <Image 
+                        src={qrCodeDataUrl} 
+                        alt="Scan Google Authenticator 2FA QR Code" 
+                        width={200}
+                        height={200}
+                        unoptimized
+                        className="w-48 h-48 mx-auto object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-48 h-48 mx-auto flex items-center justify-center bg-gray-50 text-xs text-gray-500 rounded-xl border border-gray-200">
+                      Generating QR code...
+                    </div>
+                  )}
+                  <div className="max-w-xs mx-auto">
+                    <p className="text-xs font-semibold text-[#071d32]">Scan with Google Authenticator</p>
+                    <p className="text-[11px] text-[#74818b] mt-0.5 leading-relaxed">
+                      Open <strong>Google Authenticator</strong> on your phone, tap the <strong>+</strong> button, select <strong>Scan a QR code</strong>, and point your camera here.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {setupTab === "key" && (
+                <div className="p-3.5 bg-white border border-[#e6e3dc] rounded-xl text-xs space-y-2.5">
+                  <p className="font-semibold text-[#071d32]">Enter this key manually in Google Authenticator:</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 p-2 bg-[#f8f7f4] border border-[#e1dfd8] rounded font-mono text-[11px] text-[#071d32] select-all break-all">
+                      {currentSecretKey}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={copySetupKey}
+                      className="px-3 py-2 bg-[#071d32] text-white rounded text-[11px] font-medium hover:bg-[#123352] flex items-center gap-1 shrink-0"
+                    >
+                      {copiedKey ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedKey ? "Copied" : "Copy Key"}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-[#74818b]">
+                    Account Name: <strong>StanBridge Airways</strong> · Type: <strong>Time-based (TOTP)</strong>
+                  </p>
+                </div>
+              )}
+
+              {/* Optional Test Verifier */}
+              <form onSubmit={testActiveTotp} className="pt-3 border-t border-[#eee9de] flex flex-col sm:flex-row items-center gap-2">
+                <span className="text-[11px] text-[#74818b] shrink-0">Test 6-digit code:</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000 000"
+                  value={testCode}
+                  onChange={(e) => setTestCode(e.target.value)}
+                  className="w-32 text-center text-xs px-2.5 py-1.5 border border-[#e1dfd8] rounded font-mono bg-white outline-none focus:border-[#c9a66b]"
+                />
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 bg-[#071d32] text-white text-xs font-semibold rounded hover:bg-[#143a5c] transition"
+                >
+                  Verify Code
+                </button>
+                {testStatus && (
+                  <span className={`text-[11px] font-medium ${testStatus.startsWith("✓") ? "text-emerald-700" : "text-rose-600"}`}>
+                    {testStatus}
+                  </span>
+                )}
+              </form>
+            </div>
+          )}
+
+          {/* Disable confirmation form */}
+          {showDisableForm && (
+            <form onSubmit={disableTwoFactor} className="p-4 bg-red-50/60 border border-red-200 rounded-xl space-y-2.5">
+              <p className="text-xs text-red-900 font-medium">Confirm your password to disable Two-Factor Authentication:</p>
+              <div className="flex gap-2">
+                <input
+                  autoComplete="current-password"
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                  type="password"
+                  placeholder="Account password"
+                  value={password}
+                  className="flex-1 text-xs px-3 py-2 border border-red-200 rounded-lg bg-white"
+                />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition"
+                >
+                  {loading ? "Disabling..." : "Confirm Disable"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowDisableForm(false); setPassword(""); }}
+                  className="px-3 py-2 bg-white border border-gray-300 text-gray-700 text-xs rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
+      {/* 2. WHEN DISABLED: Initial Setup Flow */}
       {!isEnabled && !enrollment && !showSetup && (
         <div className="mt-4 pt-3 border-t border-[#eeece6] flex items-center justify-between">
           <span className="text-xs text-[#74818b]">Add extra protection to your bookings and profile</span>
           <button 
             type="button" 
             onClick={() => setShowSetup(true)}
-            className="px-3 py-1.5 bg-[#071d32] hover:bg-[#11314f] text-white text-xs font-medium rounded transition"
+            className="px-3.5 py-2 bg-[#071d32] hover:bg-[#11314f] text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-1.5"
           >
-            Configure Authenticator
+            <Smartphone className="w-3.5 h-3.5 text-[#c9a66b]" />
+            Configure Google Authenticator
           </button>
         </div>
       )}
 
-      {/* Start setup password confirmation */}
+      {/* Password Confirmation Before Enrollment */}
       {!isEnabled && !enrollment && showSetup && (
         <form className="mt-4 pt-4 border-t border-[#eeece6] space-y-3" onSubmit={beginEnrollment}>
           <p className="text-xs text-[#071d32] font-medium">Confirm your password to generate your authenticator setup key & QR code:</p>
@@ -169,19 +394,19 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
               type="password" 
               placeholder="Your account password"
               value={password}
-              className="flex-1 text-xs px-3 py-2 border border-[#e1dfd8] rounded outline-none focus:border-[#c9a66b]"
+              className="flex-1 text-xs px-3 py-2 border border-[#e1dfd8] rounded-lg outline-none focus:border-[#c9a66b]"
             />
             <button 
               type="submit" 
               disabled={loading}
-              className="px-4 py-2 bg-[#071d32] text-white text-xs font-medium rounded hover:bg-[#11314f] transition disabled:opacity-50"
+              className="px-4 py-2 bg-[#071d32] text-white text-xs font-semibold rounded-lg hover:bg-[#11314f] transition disabled:opacity-50"
             >
               {loading ? "Verifying..." : "Continue"}
             </button>
-            <button 
-              type="button" 
-              onClick={() => { setShowSetup(false); setError(""); }}
-              className="px-3 py-2 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200 transition"
+            <button
+              type="button"
+              onClick={() => { setShowSetup(false); setPassword(""); }}
+              className="px-3 py-2 bg-white border border-gray-300 text-gray-700 text-xs rounded-lg"
             >
               Cancel
             </button>
@@ -189,18 +414,15 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
         </form>
       )}
 
-      {/* Enrollment QR / Secret display */}
+      {/* Initial Enrollment QR Code Presentation */}
       {!isEnabled && enrollment && (
         <div className="mt-4 pt-4 border-t border-[#eeece6] space-y-4">
-          {/* Method Selector: QR Code vs Setup Key */}
-          <div className="flex border-b border-[#e8e4da] gap-4">
+          <div className="flex border-b border-[#e6e3dc] pb-2 gap-4">
             <button
               type="button"
               onClick={() => setSetupTab("qr")}
-              className={`pb-2 text-xs font-semibold flex items-center gap-1.5 transition ${
-                setupTab === "qr"
-                  ? "border-b-2 border-[#071d32] text-[#071d32]"
-                  : "text-[#74818b] hover:text-[#071d32]"
+              className={`text-xs font-bold pb-1 flex items-center gap-1.5 transition ${
+                setupTab === "qr" ? "text-[#071d32] border-b-2 border-[#c9a66b]" : "text-[#74818b] hover:text-[#071d32]"
               }`}
             >
               <QrCode className="w-3.5 h-3.5" /> Scan QR Code
@@ -208,25 +430,24 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
             <button
               type="button"
               onClick={() => setSetupTab("key")}
-              className={`pb-2 text-xs font-semibold flex items-center gap-1.5 transition ${
-                setupTab === "key"
-                  ? "border-b-2 border-[#071d32] text-[#071d32]"
-                  : "text-[#74818b] hover:text-[#071d32]"
+              className={`text-xs font-bold pb-1 flex items-center gap-1.5 transition ${
+                setupTab === "key" ? "text-[#071d32] border-b-2 border-[#c9a66b]" : "text-[#74818b] hover:text-[#071d32]"
               }`}
             >
-              <Copy className="w-3.5 h-3.5" /> Manual Setup Key
+              <KeyRound className="w-3.5 h-3.5" /> Manual Setup Key
             </button>
           </div>
 
-          {/* QR Code Tab View */}
           {setupTab === "qr" && (
-            <div className="p-4 bg-white border border-[#e8e4da] rounded-xl text-center space-y-3">
+            <div className="space-y-3 text-center">
               {qrCodeDataUrl ? (
-                <div className="inline-block p-3 bg-white border-2 border-[#071d32] rounded-xl shadow-sm">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={qrCodeDataUrl}
-                    alt="Scan StanBridge Airways 2FA QR Code"
+                <div className="inline-block p-3 bg-white border border-[#e1dfd8] rounded-xl shadow-sm">
+                  <Image 
+                    src={qrCodeDataUrl} 
+                    alt="Scan Google Authenticator 2FA QR Code" 
+                    width={200}
+                    height={200}
+                    unoptimized
                     className="w-48 h-48 mx-auto object-contain"
                   />
                 </div>
@@ -236,21 +457,20 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
                 </div>
               )}
               <div>
-                <p className="text-xs font-semibold text-[#071d32]">Scan with Google Authenticator, Microsoft, or Phone Camera</p>
+                <p className="text-xs font-semibold text-[#071d32]">Scan with Google Authenticator</p>
                 <p className="text-[11px] text-[#74818b] mt-0.5">
-                  Open your authenticator app, tap <strong>+ (Add Account)</strong> and point your camera at this QR code.
+                  Open Google Authenticator, tap <strong>+ (Add Account)</strong> and point your camera at this QR code.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Manual Setup Key Tab View */}
           {setupTab === "key" && (
             <div className="p-3.5 bg-[#f8f7f4] border border-[#e6e3dc] rounded-xl text-xs space-y-2.5">
               <p className="font-semibold text-[#071d32]">Enter this key manually in your authenticator app:</p>
               <div className="flex items-center gap-2">
                 <code className="flex-1 p-2 bg-white border border-[#e1dfd8] rounded font-mono text-[11px] text-[#071d32] select-all break-all">
-                  {decodeURIComponent(new URL(enrollment.totpURI).searchParams.get("secret") ?? "")}
+                  {currentSecretKey}
                 </code>
                 <button
                   type="button"
@@ -269,7 +489,7 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
 
           {/* Verification Code Submission */}
           <form className="space-y-2.5 bg-[#fbfaf8] p-4 border border-[#eee9de] rounded-xl" onSubmit={confirmEnrollment}>
-            <p className="font-semibold text-[#071d32] text-xs">Enter the 6-digit verification code generated by the app:</p>
+            <p className="font-semibold text-[#071d32] text-xs">Enter the 6-digit verification code generated by Google Authenticator:</p>
             <div className="flex gap-2">
               <input 
                 autoComplete="one-time-code" 
@@ -280,110 +500,17 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
                 required 
                 placeholder="000 000"
                 value={code} 
-                className="w-44 text-sm tracking-widest text-center px-3 py-2 border border-[#e1dfd8] rounded outline-none focus:border-[#c9a66b] bg-white font-mono"
+                className="w-44 text-sm tracking-widest text-center px-3 py-2 border border-[#e1dfd8] rounded-lg outline-none focus:border-[#c9a66b] bg-white font-mono"
               />
               <button 
                 type="submit" 
                 disabled={loading}
-                className="px-4 py-2 bg-[#071d32] text-white text-xs font-semibold rounded hover:bg-[#11314f] transition disabled:opacity-50"
+                className="px-4 py-2 bg-[#071d32] text-white text-xs font-semibold rounded-lg hover:bg-[#11314f] transition disabled:opacity-50"
               >
                 {loading ? "Verifying..." : "Verify & Activate"}
               </button>
             </div>
           </form>
-        </div>
-      )}
-
-      {/* When enabled: clean status & optional backup codes drawer */}
-      {isEnabled && (
-        <div className="mt-4 pt-3 border-t border-[#eeece6] space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            {enrollment?.backupCodes && (
-              <button
-                type="button"
-                onClick={() => setShowBackupCodes(!showBackupCodes)}
-                className="inline-flex items-center gap-1.5 text-xs text-[#071d32] font-medium hover:text-[#c9a66b] transition"
-              >
-                {showBackupCodes ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                {showBackupCodes ? "Hide Backup Codes" : "View Backup Codes"}
-              </button>
-            )}
-
-            {!showDisableForm ? (
-              <button
-                type="button"
-                onClick={() => setShowDisableForm(true)}
-                className="text-xs text-red-600 hover:text-red-700 underline underline-offset-2 ml-auto"
-              >
-                Disable 2FA
-              </button>
-            ) : null}
-          </div>
-
-          {/* Backup codes grid only if user explicitly clicks to view */}
-          {isEnabled && showBackupCodes && enrollment?.backupCodes && (
-            <div className="p-3 bg-[#fbfaf8] border border-[#e8e4da] rounded-lg mt-2">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-[#071d32]">Emergency Backup Codes</span>
-                <button
-                  type="button"
-                  onClick={copyAllCodes}
-                  className="inline-flex items-center gap-1 text-[11px] text-[#071d32] bg-white px-2 py-1 rounded border border-[#e1dfd8] hover:bg-gray-50"
-                >
-                  {copiedCodes ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                  {copiedCodes ? "Copied!" : "Copy All"}
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {enrollment.backupCodes.map((backupCode) => (
-                  <code key={backupCode} className="text-[11px] font-mono p-1.5 bg-white border border-[#eee] rounded text-center text-[#071d32]">
-                    {backupCode}
-                  </code>
-                ))}
-              </div>
-              <div className="mt-2 text-right">
-                <button 
-                  type="button" 
-                  onClick={() => setShowBackupCodes(false)}
-                  className="text-[11px] text-[#74818b] hover:text-[#071d32]"
-                >
-                  Close & Done
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Disable confirmation form */}
-          {showDisableForm && (
-            <form onSubmit={disableTwoFactor} className="p-3 bg-red-50/50 border border-red-200 rounded mt-2 space-y-2">
-              <p className="text-xs text-red-800 font-medium">Confirm your password to disable Two-Factor Authentication:</p>
-              <div className="flex gap-2">
-                <input
-                  autoComplete="current-password"
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                  type="password"
-                  placeholder="Account password"
-                  value={password}
-                  className="flex-1 text-xs px-3 py-1.5 border border-red-200 rounded bg-white"
-                />
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition"
-                >
-                  {loading ? "Disabling..." : "Confirm Disable"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setShowDisableForm(false); setPassword(""); }}
-                  className="px-2.5 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs rounded"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
         </div>
       )}
     </div>
