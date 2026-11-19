@@ -72,8 +72,13 @@ export function AuthForm({ mode }: AuthFormProps) {
       }
 
       if (isRegistering) {
+        if (result.data?.user) {
+          router.replace("/account");
+          router.refresh();
+          return;
+        }
         setVerificationPending(true);
-        setVerificationMessage("Account created. Verify your email, then sign in and set up Google Authenticator to use your account.");
+        setVerificationMessage("Account created. Check your email for a verification link before signing in.");
         return;
       }
       router.replace("/account");

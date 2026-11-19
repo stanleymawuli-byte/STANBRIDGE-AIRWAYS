@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getVerifiedUserSession } from "@/lib/user-auth";
 import {
   AmadeusConfigurationError,
   searchFlightOffers,
@@ -15,11 +14,6 @@ const travelClasses: Record<string, string> = {
 };
 
 export async function GET(request: NextRequest) {
-  const session = await getVerifiedUserSession();
-  if (!session) {
-    return NextResponse.json({ error: "Sign in and complete Google Authenticator setup to continue." }, { status: 401 });
-  }
-
   const parameters = request.nextUrl.searchParams;
   const origin = parameters.get("origin")?.trim().toUpperCase();
   const destination = parameters.get("destination")?.trim().toUpperCase();

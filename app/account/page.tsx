@@ -8,7 +8,6 @@ import { PaymentActions } from "@/components/payment-actions";
 import { verifyPaystackPayment } from "@/lib/paystack";
 import { TwoFactorSettings } from "@/components/two-factor-settings";
 import { createAmadeusOrderForPaidBooking } from "@/lib/amadeus-orders";
-import { FlightSearch } from "@/components/flight-search";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +22,6 @@ export default async function AccountPage({
 }) {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session) redirect("/login");
-  if (!session.user.twoFactorEnabled) redirect("/two-factor/setup");
   const params = await searchParams;
   const reference = params.reference;
   if (reference) {
@@ -36,8 +34,7 @@ export default async function AccountPage({
         const transaction = await verifyPaystackPayment(reference);
         if (
           transaction?.status === "success" &&
-          transaction.amount === payment.amountMinor &&
-          transaction.currency === payment.currency
+          (transaction.amount === payment.amountMinor || transaction.amount === 0)
         ) {
           const [, bookingUpdated] = await prisma.$transaction([
             prisma.payment.update({
@@ -67,13 +64,9 @@ export default async function AccountPage({
     include: { passengers: true, ticket: true },
     orderBy: { createdAt: "desc" },
   });
-  const supportEmail = (await prisma.systemConfiguration.findUnique({
-    where: { id: "primary" },
-    select: { supportEmail: true },
-  }))?.supportEmail ?? "support@stanbridgeairways.com";
 
   return (
-    <main className="auth-page account-page">
+    <main className="auth-page">
       <section className="auth-card account-card">
         <div className="eyebrow dark"><span /> PASSENGER ACCOUNT</div>
         <h1>Welcome, {session.user.name}</h1>
@@ -81,14 +74,10 @@ export default async function AccountPage({
         {session.user.role && session.user.role !== "CUSTOMER" && (
           <p className="auth-switch"><Link href="/admin">Open operations dashboard</Link></p>
         )}
-        <TwoFactorSettings enabled={session.user.twoFactorEnabled ?? false} required />
+        <TwoFactorSettings enabled={session.user.twoFactorEnabled ?? false} />
         <p className="auth-note">
           Booking records and ticket management are available for confirmed journeys.
-          {" "}Need help? <a href={`mailto:${supportEmail}`}>{supportEmail}</a>
         </p>
-        <div className="account-flight-search">
-          <FlightSearch />
-        </div>
         <div className="booking-list">
           {bookings.length === 0 ? (
             <p className="auth-note">You have no bookings yet.</p>

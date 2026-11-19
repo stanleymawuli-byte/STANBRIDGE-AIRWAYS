@@ -25,8 +25,7 @@ npm run dev
 ```
 
 Open http://localhost:3000. Create a passenger account at `/register`; sign in at `/login`.
-The protected `/account` page confirms the session. Flight search and booking are
-available to signed-in passengers from `/account`, not on the public landing page.
+The protected `/account` page confirms the session.
 
 Passwords are HMAC-peppered with `PASSWORD_PEPPER`, then hashed with Better Auth's
 Scrypt implementation, which generates a unique random salt per password. The pepper
@@ -40,12 +39,11 @@ environment variable. Do not run development migrations against production.
 Email verification and password recovery use Resend. Set `RESEND_API_KEY` and
 `EMAIL_FROM` in `.env.local`; the sender domain must be verified with Resend.
 New accounts must verify their email before signing in. Verification and password
-reset links expire after one hour. Every account must set up Google Authenticator
-(or another compatible TOTP app) after the first verified sign-in; account,
-booking, payment, and staff APIs remain unavailable until enrollment is complete.
-Each sign-in then requires a valid authenticator code or one-time backup code.
-Public registration always assigns the `CUSTOMER` role; it cannot grant
-administrator access.
+reset links expire after one hour. Two-factor authentication is optional for all
+accounts. Users can enroll an authenticator app from their passenger account and
+use one-time backup codes if the device is unavailable. Sign-in requires a valid
+authenticator or backup code when 2FA is enabled. Public registration always
+assigns the `CUSTOMER` role; it cannot grant administrator access.
 
 ### Admin dashboard
 
@@ -75,62 +73,11 @@ npm run build
 
 ## Deploy to Render
 
-The root `render.yaml` configures a free Render web service and a free PostgreSQL
-database for this Next.js app. The web service receives a database connection URL
-and independently generated authentication secrets; it applies pending Prisma
-migrations before starting the app.
-
+The root `render.yaml` configures a free Render web service for this Next.js app.
 Push this project to GitHub, then in Render choose **New → Blueprint**, connect the
-repository, and apply the detected `render.yaml`. During setup, provide `RESEND_API_KEY`
-and `EMAIL_FROM` privately in Render. The sender address must use a domain verified
-with Resend. Do not put these credentials in Git or share them in chat. Without
-working email delivery, registration and password recovery cannot complete.
-
-The configured free PostgreSQL database is for temporary testing only; Render's
-free databases expire and their data is not suitable for production accounts. For
-real users, replace it with a persistent database and preserve/import any existing
-user data before changing `DATABASE_URL`. Future pushes to the connected branch
-deploy automatically.
-
-### Reports, configuration restore points, and demo staff
-
-The staff dashboard provides separate overview, booking, and reports tabs.
-Reports aggregate booking status, popular routes, and payment totals by currency
-and status. Super-admins also have user/role management and a configuration tab.
-Deleting a user hard-deletes the account and its cascaded booking records; the
-dashboard prevents self-deletion and removal of the final super-admin.
-
-Configuration backups include only the support email, booking hold duration, and
-maintenance-mode setting. Restoring a configuration backup does not write to user,
-password, booking, passenger, or payment tables. These snapshots are not full
-database backups. Production disaster recovery requires an independently tested
-PostgreSQL backup and restore plan.
-
-To create four **local demo** staff accounts, set four distinct email addresses
-and four distinct strong passwords in the optional `DEMO_*` variables in
-`.env.local`, apply migrations, then run `npm run db:seed:demo`. The script creates
-a super-admin, operations manager, booking agent, and finance officer; it stores
-only salted password hashes and never prints passwords. Existing matching accounts
-are left unchanged. Never use demo credentials in production; each account must
-complete Google Authenticator setup before it can access the application.
-
-The responsive website includes an installable mobile-web manifest. It is not a
-native iOS/Android store app; publish native apps separately if app-store
-distribution is required.
-
-### Security and AWS
-
-Password registration requires at least 12 characters, rejects common passwords
-using a local denylist, and is rate-limited; database password hashes use
-per-password salts and a separate HMAC pepper. Required two-factor sign-in uses
-Google Authenticator-compatible TOTP and one-time recovery codes. Use HTTPS and
-keep both authentication secrets independently generated and outside source control.
-
-An AWS deployment guide is in [docs/aws-deployment.md](./docs/aws-deployment.md).
-No AWS account or cloud resources have been created by this project. Cloud
-deployment must be completed from an account you control; never send cloud
-credentials in chat. Generate Kleopatra OpenPGP keys on your own computer and
-keep the private key offline.
+repository, and apply the detected `render.yaml`. Render will build and deploy the
+site and provide a public `onrender.com` URL. Future pushes to the connected branch
+will deploy automatically.
 
 The deployment includes passenger registration, booking, sandbox payment, staff
 dashboard and account features only when PostgreSQL, required secrets, and Resend
@@ -154,7 +101,7 @@ Provider credentials, `BETTER_AUTH_SECRET`, `PASSWORD_PEPPER`, and database cred
 
 ## Current implementation boundary
 
-The project includes the original landing page, server-side Amadeus flight search, repricing and flight-order creation/retrieval, a PostgreSQL/Prisma booking schema, customer registration/login, verified-email flows, password recovery, mandatory Google Authenticator-compatible two-factor authentication, database-backed sessions and rate limiting, passenger account management, Paystack sandbox payment, and a role-gated staff dashboard. Configure `AMADEUS_ENV=test`, `AMADEUS_CLIENT_ID`, and `AMADEUS_CLIENT_SECRET` to enable test inventory and orders. Apply database migrations with `npm run db:migrate:deploy`, then provision the first super-admin as described above. Amadeus orders are reservations/PNRs, not e-tickets; airline ticket issuance is not supported by this integration. Order cancellation is intentionally not exposed until a refund flow is implemented. A successful Paystack charge with an Amadeus order failure remains a paid booking requiring manual review; an interrupted order request also needs reconciliation before any retry to avoid duplicate reservations.
+The project includes the original landing page, server-side Amadeus flight search, repricing and flight-order creation/retrieval, a PostgreSQL/Prisma booking schema, customer registration/login, verified-email flows, password recovery, optional authenticator-based two-factor authentication, database-backed sessions and rate limiting, passenger account management, Paystack sandbox payment, and a role-gated staff dashboard. Configure `AMADEUS_ENV=test`, `AMADEUS_CLIENT_ID`, and `AMADEUS_CLIENT_SECRET` to enable test inventory and orders. Apply database migrations with `npm run db:migrate:deploy`, then provision the first super-admin as described above. Amadeus orders are reservations/PNRs, not e-tickets; airline ticket issuance is not supported by this integration. Order cancellation is intentionally not exposed until a refund flow is implemented. A successful Paystack charge with an Amadeus order failure remains a paid booking requiring manual review; an interrupted order request also needs reconciliation before any retry to avoid duplicate reservations.
 
 ## Development phases
 

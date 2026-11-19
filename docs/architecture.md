@@ -25,14 +25,6 @@ tests/                       Unit and integration tests
 ```
 
 Keep provider credentials and database access in server-only modules. Client components call application endpoints; they must not call Amadeus or Paystack using secret credentials.
-Database queries use Prisma's parameterized operations rather than concatenating
-user input into SQL, for example:
-
-```ts
-const account = await prisma.user.findUnique({
-  where: { email: submittedEmail.trim().toLowerCase() },
-});
-```
 
 ## Booking and payment invariants
 
@@ -46,23 +38,17 @@ const account = await prisma.user.findUnique({
 
 Use `.env.local` for local secrets and a managed secret store for deployments. `.env.example` contains names and placeholders only. Production requires HTTPS, a managed PostgreSQL database, tested backups, restricted database credentials, secret rotation and monitored provider webhooks. Vercel or another host must support the server runtime and network access required by the database and providers.
 
-## Current implementation and deployment status
+## Phase status
 
-The app includes customer registration and recovery, salted Scrypt password hashes
-with a separate HMAC pepper, common-password rejection, database-backed
-rate-limits, mandatory Google Authenticator-compatible TOTP, booking and payment flows, Amadeus
-test integration, and a role-protected operations dashboard. Public sign-up can
-only create `CUSTOMER` accounts. The admin interface includes reports, hard
-account deletion with related-record cascade behavior, configurable booking
-settings, and configuration-only restore points. The mobile experience is a
-responsive installable web app, not a native iOS/Android application.
+The current milestone adds PostgreSQL/Prisma models for Better Auth users, accounts,
+sessions, verification, database-backed rate limits and TOTP storage. Email/password
+registration and login use Better Auth with Scrypt password hashes, an HMAC pepper,
+server-managed sessions and rate limits. Public registration can only create
+`CUSTOMER` accounts. Protected account pages verify sessions on the server.
 
-Configuration backups include only the settings stored in `SystemConfiguration`;
-they cannot restore or replace users, credentials, bookings, passenger data, or
-payments. Production database recovery must use separately managed PostgreSQL
-backups and tested restore procedures.
-
-This repository is not deployed to AWS. See [the AWS deployment guide](./aws-deployment.md)
-for the account-owner setup and production release checklist. Email and provider
-credentials, database access, HTTPS, MFA, backups, monitoring, and a validated
-production environment must be configured before real users or live payments.
+Outbound email is not configured, so email verification and password recovery are
+disabled. TOTP backend support is installed, but enrollment UI and mandatory
+administrator 2FA are not complete. There is no administrator bootstrap, flight
+provider integration, booking or payment workflow yet. Apply the checked-in
+PostgreSQL migration only after configuring the target database; never use a
+development database URL against production.

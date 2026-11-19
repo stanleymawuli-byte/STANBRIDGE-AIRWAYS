@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
 type Enrollment = {
@@ -9,8 +8,7 @@ type Enrollment = {
   backupCodes: string[];
 };
 
-export function TwoFactorSettings({ enabled, required = false }: { enabled: boolean; required?: boolean }) {
-  const router = useRouter();
+export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
   const [isEnabled, setIsEnabled] = useState(enabled);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [password, setPassword] = useState("");
@@ -80,11 +78,7 @@ export function TwoFactorSettings({ enabled, required = false }: { enabled: bool
   return (
     <section className="security-settings" aria-labelledby="two-factor-heading">
       <h2 id="two-factor-heading">Two-factor authentication</h2>
-      <p>{isEnabled
-        ? "Enabled with an authenticator app."
-        : required
-          ? "Required. Set up Google Authenticator to continue using your account."
-          : "Optional. Use an authenticator app for an extra sign-in step."}</p>
+      <p>{isEnabled ? "Enabled with an authenticator app." : "Optional. Use an authenticator app for an extra sign-in step."}</p>
       {!isEnabled && !enrollment && (
         <form className="security-form" onSubmit={beginEnrollment}>
           <label>
@@ -96,7 +90,7 @@ export function TwoFactorSettings({ enabled, required = false }: { enabled: bool
       )}
       {!isEnabled && enrollment && (
         <div className="security-enrollment">
-          <p>In Google Authenticator, tap +, choose Enter a setup key, and enter this key. Keep it private.</p>
+          <p>In your authenticator app, add an account by entering this setup key or opening the URI:</p>
           <code>{decodeURIComponent(new URL(enrollment.totpURI).searchParams.get("secret") ?? "")}</code>
           <details>
             <summary>Show setup URI</summary>
@@ -123,19 +117,7 @@ export function TwoFactorSettings({ enabled, required = false }: { enabled: bool
           <ul>{enrollment.backupCodes.map((backupCode) => <li key={backupCode}><code>{backupCode}</code></li>)}</ul>
         </div>
       )}
-      {required && isEnabled && enrollment && (
-        <button
-          className="security-continue"
-          type="button"
-          onClick={() => {
-            router.replace("/account");
-            router.refresh();
-          }}
-        >
-          I saved my backup codes — continue
-        </button>
-      )}
-      {isEnabled && !required && (
+      {isEnabled && (
         <form className="security-form" onSubmit={disableTwoFactor}>
           <label>
             <span>Confirm your password to disable</span>

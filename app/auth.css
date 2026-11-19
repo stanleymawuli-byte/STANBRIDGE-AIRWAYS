@@ -209,16 +209,6 @@
   font-size: 11px;
 }
 
-.security-continue {
-  margin-top: 16px;
-  border: 0;
-  background: var(--navy);
-  color: #fff;
-  padding: 12px 15px;
-  cursor: pointer;
-  font-size: 11px;
-}
-
 .security-form button:disabled {
   cursor: wait;
   opacity: .65;
@@ -416,110 +406,6 @@
   background: #fff;
 }
 
-.admin-tabs {
-  display: flex;
-  gap: 7px;
-  overflow-x: auto;
-  margin: 24px 0 18px;
-  padding-bottom: 5px;
-}
-
-.admin-tabs button {
-  flex: 0 0 auto;
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid #ded9ce;
-  background: #fff;
-  color: #53636c;
-  cursor: pointer;
-  font-size: 10px;
-}
-
-.admin-tabs button.active {
-  border-color: var(--navy);
-  background: var(--navy);
-  color: #fff;
-}
-
-.admin-success {
-  margin: 16px 0 0;
-  padding: 12px 14px;
-  border: 1px solid #cfe5d6;
-  background: #f0f8f2;
-  color: #286044;
-  font-size: 11px;
-}
-
-.admin-report-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px 18px;
-}
-
-.admin-report-grid .admin-panel:last-child {
-  grid-column: 1 / -1;
-}
-
-.admin-config-form {
-  display: grid;
-  max-width: 620px;
-  gap: 17px;
-}
-
-.admin-config-form > label,
-.admin-backup-create > label {
-  display: grid;
-  gap: 7px;
-}
-
-.admin-config-form label > span,
-.admin-backup-create label > span {
-  color: #9a794c;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: .12em;
-}
-
-.admin-config-form input:not([type="checkbox"]),
-.admin-backup-create input {
-  min-height: 42px;
-  padding: 9px 11px;
-  border: 1px solid #e1dfd8;
-  background: #fff;
-  color: var(--navy);
-  font-size: 11px;
-}
-
-.admin-config-form .admin-config-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #50616c;
-  font-size: 11px;
-}
-
-.admin-config-form .admin-config-toggle input {
-  width: 18px;
-  height: 18px;
-}
-
-.admin-backup-create {
-  display: flex;
-  align-items: end;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.admin-backup-create > label {
-  flex: 1 1 270px;
-}
-
-.admin-delete {
-  border-color: #efcaca;
-  color: #963b35;
-}
-
 .admin-panel-heading {
   margin-bottom: 18px;
 }
@@ -656,25 +542,6 @@
   margin-top: 24px;
 }
 
-.account-page {
-  justify-content: flex-start;
-  padding: 38px 5%;
-}
-
-.account-card {
-  width: min(100%, 1120px);
-}
-
-.account-flight-search {
-  margin: 24px -38px 0;
-  border-top: 1px solid #eeece6;
-}
-
-.account-flight-search .booking-section {
-  padding-top: 38px;
-  padding-bottom: 38px;
-}
-
 .booking-list {
   display: grid;
   gap: 12px;
@@ -723,47 +590,48 @@
   opacity: .65;
 }
 
-@media (max-width: 700px) {
-  .admin-header {
-    align-items: flex-start;
-  }
-
-  .admin-account {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
-  .admin-content {
-    padding: 32px 16px 50px;
-  }
-
-  .admin-title-row {
-    align-items: flex-start;
-  }
-
-  .admin-title-row h1 {
-    font-size: 30px;
-  }
-
-  .admin-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .admin-panel {
-    padding: 16px 12px;
-  }
-
-  .admin-panel-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-}
-
 @media (max-width: 520px) {
   .auth-page {
     justify-content: flex-start;
     padding: 24px 16px;
   }
+
+  @media (max-width: 700px) {
+    .admin-header {
+      align-items: flex-start;
+    }
+
+    .admin-account {
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .admin-content {
+      padding: 32px 16px 50px;
+    }
+
+    .admin-title-row {
+      align-items: flex-start;
+    }
+
+    .admin-title-row h1 {
+      font-size: 30px;
+    }
+
+    .admin-metrics {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-panel {
+      padding: 16px 12px;
+    }
+
+    .admin-panel-heading {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+
   .auth-brand {
     margin-bottom: 22px;
   }
@@ -772,50 +640,7 @@
     padding: 28px 22px;
   }
 
-  .account-page {
-    padding: 24px 12px;
-  }
-
-  .account-flight-search {
-    margin-right: -22px;
-    margin-left: -22px;
-  }
-
   .auth-card h1 {
     font-size: 30px;
-  }
-
-  .admin-header {
-    gap: 12px;
-    padding: 13px 15px;
-  }
-
-  .admin-brand {
-    gap: 7px;
-  }
-
-  .admin-brand strong {
-    font-size: 10px;
-  }
-
-  .admin-brand small {
-    font-size: 7px;
-  }
-
-  .admin-account {
-    gap: 8px;
-    font-size: 9px;
-  }
-
-  .admin-report-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-report-grid .admin-panel:last-child {
-    grid-column: auto;
-  }
-
-  .admin-backup-create .admin-refresh {
-    width: 100%;
   }
 }

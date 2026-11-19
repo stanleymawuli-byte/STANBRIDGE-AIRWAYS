@@ -1,12 +1,13 @@
+import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
-import { getVerifiedUserSession } from "@/lib/user-auth";
+import { getAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { initializePaystackPayment, paystackConfiguration } from "@/lib/paystack";
+import { initializePaystackPayment, isPaystackConfigured, paystackConfiguration } from "@/lib/paystack";
 
 export async function POST(request: NextRequest) {
-  const session = await getVerifiedUserSession();
-  if (!session) return NextResponse.json({ error: "Sign in and complete Google Authenticator setup to continue." }, { status: 401 });
+  const session = await getAuth().api.getSession({ headers: await headers() });
+  if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
   const body = (await request.json()) as { bookingId?: string };
   if (!body.bookingId) return NextResponse.json({ error: "bookingId is required." }, { status: 400 });
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { currency } = paystackConfiguration();
-  if (booking.fareCurrency !== currency) {
+  if (isPaystackConfigured() && booking.fareCurrency !== currency) {
     return NextResponse.json(
       { error: `Paystack is configured for ${currency}, but this fare is ${booking.fareCurrency}. Currency conversion is not configured.` },
       { status: 409 },

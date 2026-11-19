@@ -15,7 +15,6 @@ export const metadata = {
 export default async function AdminPage() {
   const authenticatedSession = await getAuth().api.getSession({ headers: await headers() });
   if (!authenticatedSession) redirect("/login");
-  if (!authenticatedSession.user.twoFactorEnabled) redirect("/two-factor/setup");
   if (!staffRoles.includes(authenticatedSession.user.role as (typeof staffRoles)[number])) {
     redirect("/account");
   }
@@ -35,7 +34,7 @@ export default async function AdminPage() {
           <SignOutButton />
         </div>
       </header>
-      <AdminDashboard role={session.user.role} currentUserId={session.user.id} />
+      <AdminDashboard role={session.user.role} />
     </main>
   );
 }

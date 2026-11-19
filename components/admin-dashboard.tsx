@@ -1,8 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AdminConfigPanel } from "@/components/admin-config-panel";
-import { AdminReportsPanel } from "@/components/admin-reports-panel";
 
 type Metrics = {
   customers: number;
@@ -54,7 +52,7 @@ async function responseJson<T>(response: Response) {
   return data;
 }
 
-export function AdminDashboard({ role, currentUserId }: { role: string; currentUserId: string }) {
+export function AdminDashboard({ role }: { role: string }) {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -63,7 +61,6 @@ export function AdminDashboard({ role, currentUserId }: { role: string; currentU
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState("");
   const [orderDetails, setOrderDetails] = useState<Record<string, unknown> | null>(null);
-  const [activeTab, setActiveTab] = useState("overview");
   const canManageUsers = role === "SUPER_ADMIN";
 
   const loadDashboard = useCallback(async () => {
@@ -133,24 +130,6 @@ export function AdminDashboard({ role, currentUserId }: { role: string; currentU
     }
   }
 
-  async function deleteUser(userId: string, name: string) {
-    if (!window.confirm(`Permanently delete ${name} and all their account and booking records? This cannot be undone.`)) return;
-    setUpdating(userId);
-    setError("");
-    try {
-      await responseJson(await fetch("/api/admin/users", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
-      }));
-      setUsers((current) => current.filter((user) => user.id !== userId));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not delete user.");
-    } finally {
-      setUpdating("");
-    }
-  }
-
   async function retrieveOrder(bookingId: string) {
     setUpdating(bookingId);
     setError("");
@@ -179,16 +158,7 @@ export function AdminDashboard({ role, currentUserId }: { role: string; currentU
         </button>
       </div>
       {error && <p className="admin-error" role="alert">{error}</p>}
-      <nav className="admin-tabs" aria-label="Admin sections">
-        <button type="button" className={activeTab === "overview" ? "active" : ""} onClick={() => setActiveTab("overview")}>Overview</button>
-        <button type="button" className={activeTab === "reports" ? "active" : ""} onClick={() => setActiveTab("reports")}>Reports</button>
-        <button type="button" className={activeTab === "bookings" ? "active" : ""} onClick={() => setActiveTab("bookings")}>Bookings</button>
-        {canManageUsers && <>
-          <button type="button" className={activeTab === "users" ? "active" : ""} onClick={() => setActiveTab("users")}>Users & roles</button>
-          <button type="button" className={activeTab === "configuration" ? "active" : ""} onClick={() => setActiveTab("configuration")}>Configuration & backups</button>
-        </>}
-      </nav>
-      {activeTab === "overview" && <div className="admin-metrics">
+      <div className="admin-metrics">
         <Metric label="Total bookings" value={metrics?.allBookings} />
         <Metric label="Awaiting payment" value={metrics?.pendingBookings} />
         <Metric label="Confirmed" value={metrics?.confirmedBookings} />
@@ -200,13 +170,9 @@ export function AdminDashboard({ role, currentUserId }: { role: string; currentU
             ? metrics.successfulPaymentTotal.map(({ currency, amount }) => `${currency} ${amount}`).join(" · ")
             : "—"}
         />
-      </div>}
+      </div>
 
-      {activeTab === "reports" && <AdminReportsPanel />}
-
-      {activeTab === "configuration" && canManageUsers && <AdminConfigPanel />}
-
-      {activeTab === "bookings" && <section className="admin-panel">
+      <section className="admin-panel">
         <div className="admin-panel-heading">
           <div><h2>Bookings</h2><p>Latest booking records and their current status.</p></div>
           <label className="admin-filter">
@@ -242,16 +208,16 @@ export function AdminDashboard({ role, currentUserId }: { role: string; currentU
           </div>
         )}
         {orderDetails && <pre className="admin-order-details">{JSON.stringify(orderDetails, null, 2)}</pre>}
-      </section>}
+      </section>
 
-      {activeTab === "users" && canManageUsers && <section className="admin-panel">
+      {canManageUsers && <section className="admin-panel">
         <div className="admin-panel-heading">
           <div><h2>User and staff roles</h2><p>Assign permissions. Public sign-up cannot grant staff access.</p></div>
         </div>
         {loading ? <p className="admin-empty">Loading users...</p> : (
           <div className="admin-table-wrap">
             <table className="admin-table">
-              <thead><tr><th>User</th><th>Verification</th><th>2FA</th><th>Bookings</th><th>Role</th><th>Account</th></tr></thead>
+              <thead><tr><th>User</th><th>Verification</th><th>2FA</th><th>Bookings</th><th>Role</th></tr></thead>
               <tbody>{users.map((user) => (
                 <tr key={user.id}>
                   <td><strong>{user.name}</strong><small>{user.email}</small></td>
@@ -263,7 +229,6 @@ export function AdminDashboard({ role, currentUserId }: { role: string; currentU
                       {roles.map((userRole) => <option key={userRole} value={userRole}>{userRole.replaceAll("_", " ")}</option>)}
                     </select>
                   </td>
-                  <td>{user.id !== currentUserId && <button className="admin-action admin-delete" disabled={updating === user.id} onClick={() => void deleteUser(user.id, user.name)}>{updating === user.id ? "Deleting..." : "Delete"}</button>}</td>
                 </tr>
               ))}</tbody>
             </table>

@@ -7,10 +7,14 @@ type EmailMessage = {
   html: string;
 };
 
-function requiredEmailEnvironment(name: string) {
-  const value = process.env[name]?.trim();
-  if (!value) throw new Error(`Missing required environment variable: ${name}`);
-  return value;
+export function isEmailConfigured(): boolean {
+  return Boolean(process.env.RESEND_API_KEY?.trim() && process.env.EMAIL_FROM?.trim());
+}
+
+function getEmailCredentials() {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.EMAIL_FROM?.trim();
+  return { apiKey, from };
 }
 
 function escapeHtml(value: string) {
@@ -24,8 +28,13 @@ function escapeHtml(value: string) {
 }
 
 export async function sendEmail(message: EmailMessage) {
-  const apiKey = requiredEmailEnvironment("RESEND_API_KEY");
-  const from = requiredEmailEnvironment("EMAIL_FROM");
+  const { apiKey, from } = getEmailCredentials();
+  if (!apiKey || !from) {
+    console.warn(
+      `[StanBridge Email] Resend delivery is not configured (missing RESEND_API_KEY or EMAIL_FROM). Email to ${message.to} was not sent via network.`,
+    );
+    return;
+  }
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -43,7 +52,7 @@ export async function sendEmail(message: EmailMessage) {
   });
   if (!response.ok) {
     const responseText = await response.text();
-    throw new Error(`Email delivery failed (${response.status}): ${responseText.slice(0, 300)}`);
+    console.error(`Email delivery failed (${response.status}): ${responseText.slice(0, 300)}`);
   }
 }
 
