@@ -4,6 +4,7 @@ import { getAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { verifyPaystackPayment } from "@/lib/paystack";
 import { createAmadeusOrderForPaidBooking } from "@/lib/amadeus-orders";
+import { sendBookingConfirmationNotifications } from "@/lib/notifications";
 
 export async function POST(request: NextRequest) {
   const session = await getAuth().api.getSession({ headers: await headers() });
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
         data: { status: "CONFIRMED" },
       });
       order = await createAmadeusOrderForPaidBooking(payment.bookingId);
+      void sendBookingConfirmationNotifications(payment.bookingId);
     }
     return NextResponse.json({
       status,

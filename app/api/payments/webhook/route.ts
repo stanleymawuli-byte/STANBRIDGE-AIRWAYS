@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyPaystackSignature } from "@/lib/paystack";
 import { createAmadeusOrderForPaidBooking } from "@/lib/amadeus-orders";
+import { sendBookingConfirmationNotifications } from "@/lib/notifications";
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
       data: { status: "CONFIRMED" },
     });
     await createAmadeusOrderForPaidBooking(payment.bookingId);
+    void sendBookingConfirmationNotifications(payment.bookingId);
   }
   return NextResponse.json({ received: true });
 }

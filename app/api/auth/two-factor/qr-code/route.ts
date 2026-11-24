@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { getAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { decryptTotpSecret } from "@/lib/totp-decrypt";
 
 export async function GET() {
   const session = await getAuth().api.getSession({ headers: await headers() });
@@ -21,8 +22,9 @@ export async function GET() {
     );
   }
 
+  const plainSecret = await decryptTotpSecret(twoFactor.secret);
   const email = session.user.email;
-  const totpURI = `otpauth://totp/StanBridge%20Airways:${encodeURIComponent(email)}?secret=${twoFactor.secret}&issuer=StanBridge%20Airways`;
+  const totpURI = `otpauth://totp/StanBridge%20Airways:${encodeURIComponent(email)}?secret=${plainSecret}&issuer=StanBridge%20Airways`;
 
   try {
     const qrCodeDataUrl = await QRCode.toDataURL(totpURI, {
@@ -35,7 +37,7 @@ export async function GET() {
     });
 
     return NextResponse.json({
-      secret: twoFactor.secret,
+      secret: plainSecret,
       totpURI,
       qrCodeDataUrl,
     });

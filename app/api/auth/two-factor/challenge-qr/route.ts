@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { prisma } from "@/lib/prisma";
+import { decryptTotpSecret } from "@/lib/totp-decrypt";
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl;
@@ -89,8 +90,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const plainSecret = await decryptTotpSecret(twoFactor.secret);
   const finalEmail = user?.email ?? "passenger@stanbridge-airways.com";
-  const totpURI = `otpauth://totp/StanBridge%20Airways:${encodeURIComponent(finalEmail)}?secret=${twoFactor.secret}&issuer=StanBridge%20Airways`;
+  const totpURI = `otpauth://totp/StanBridge%20Airways:${encodeURIComponent(finalEmail)}?secret=${plainSecret}&issuer=StanBridge%20Airways`;
 
   try {
     const qrCodeDataUrl = await QRCode.toDataURL(totpURI, {
@@ -104,7 +106,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       email: finalEmail,
-      secret: twoFactor.secret,
+      secret: plainSecret,
       totpURI,
       qrCodeDataUrl,
     });

@@ -8,6 +8,7 @@ import { PaymentActions } from "@/components/payment-actions";
 import { verifyPaystackPayment } from "@/lib/paystack";
 import { TwoFactorSettings } from "@/components/two-factor-settings";
 import { createAmadeusOrderForPaidBooking } from "@/lib/amadeus-orders";
+import { sendBookingConfirmationNotifications } from "@/lib/notifications";
 import { 
   Plane, 
   Calendar, 
@@ -67,6 +68,7 @@ export default async function AccountPage({
             } catch (err) {
               console.error("Amadeus fulfillment deferred", err);
             }
+            void sendBookingConfirmationNotifications(payment.bookingId);
           }
         }
       } catch (error) {
