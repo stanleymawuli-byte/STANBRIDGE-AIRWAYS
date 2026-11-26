@@ -141,7 +141,7 @@ function createAuth() {
     plugins: [
       twoFactor({
         issuer: "StanBridge Airways",
-        twoFactorCookieMaxAge: 300,
+        twoFactorCookieMaxAge: 1800,
         accountLockout: { enabled: true, maxFailedAttempts: 5, durationSeconds: 900 },
       }),
       nextCookies(),

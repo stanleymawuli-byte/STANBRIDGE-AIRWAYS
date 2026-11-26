@@ -84,6 +84,9 @@ export function TwoFactorChallenge() {
         ? await authClient.twoFactor.verifyBackupCode({ code: code.trim() })
         : await authClient.twoFactor.verifyTotp({ code: code.trim() });
       if (result.error) {
+        if (result.error.message?.toLowerCase().includes("cookie")) {
+          throw new Error("Your sign-in session expired. Please sign in again with your email and password to verify.");
+        }
         throw new Error(result.error.message ?? "The code was not accepted. Please ensure your device clock is synced.");
       }
       router.replace("/account");
@@ -202,7 +205,29 @@ export function TwoFactorChallenge() {
                 />
               </label>
 
-              {error && <p className="auth-error" role="alert">{error}</p>}
+              {error && (
+                <div className="auth-error" role="alert" style={{ textAlign: "center", marginBottom: "12px" }}>
+                  <p style={{ margin: "0 0 6px 0" }}>{error}</p>
+                  {error.includes("session expired") && (
+                    <Link
+                      href="/login"
+                      style={{
+                        display: "inline-block",
+                        padding: "6px 14px",
+                        backgroundColor: "#071d32",
+                        color: "#ffffff",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        textDecoration: "none",
+                        marginTop: "4px",
+                      }}
+                    >
+                      Return to Sign In &rarr;
+                    </Link>
+                  )}
+                </div>
+              )}
 
               <button className="auth-submit" disabled={loading} type="submit">
                 {loading ? "Verifying code..." : "Verify and sign in"}
@@ -230,7 +255,29 @@ export function TwoFactorChallenge() {
                 />
               </label>
 
-              {error && <p className="auth-error" role="alert">{error}</p>}
+              {error && (
+                <div className="auth-error" role="alert" style={{ textAlign: "center", marginBottom: "12px" }}>
+                  <p style={{ margin: "0 0 6px 0" }}>{error}</p>
+                  {error.includes("session expired") && (
+                    <Link
+                      href="/login"
+                      style={{
+                        display: "inline-block",
+                        padding: "6px 14px",
+                        backgroundColor: "#071d32",
+                        color: "#ffffff",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        textDecoration: "none",
+                        marginTop: "4px",
+                      }}
+                    >
+                      Return to Sign In &rarr;
+                    </Link>
+                  )}
+                </div>
+              )}
 
               <button className="auth-submit" disabled={loading} type="submit">
                 {loading ? "Verifying..." : "Verify backup code"}
@@ -255,8 +302,8 @@ export function TwoFactorChallenge() {
         </div>
 
         <p className="auth-note" style={{ marginTop: "14px" }}>
-          This verification request expires after five minutes. If this was not you, return to the{" "}
-          <Link href="/sign-in" className="text-[#987343] underline">sign in page</Link>.
+          This verification request expires after 30 minutes. If this was not you, return to the{" "}
+          <Link href="/login" className="text-[#987343] underline">sign in page</Link>.
         </p>
       </section>
 
