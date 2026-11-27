@@ -23,6 +23,7 @@ export function AdminControlCenter({ role }: { role: string }) {
   const [configuration, setConfiguration] = useState<Config | null>(null);
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [backups, setBackups] = useState<Backup[]>([]);
+  const [manualBackupSupported, setManualBackupSupported] = useState(true);
   const [system, setSystem] = useState<SystemState | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -47,7 +48,7 @@ export function AdminControlCenter({ role }: { role: string }) {
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load restore points."); }
   }, []);
   const loadBackups = useCallback(async () => {
-    try { const data = await readJson<{ backups: Backup[] }>(await fetch("/api/admin/backups", { cache: "no-store" })); setBackups(data.backups); }
+    try { const data = await readJson<{ backups: Backup[]; manualBackupSupported?: boolean }>(await fetch("/api/admin/backups", { cache: "no-store" })); setBackups(data.backups); setManualBackupSupported(data.manualBackupSupported !== false); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load backups."); }
   }, []);
 
@@ -110,7 +111,7 @@ export function AdminControlCenter({ role }: { role: string }) {
       </div>}
       {tab === "backups" && isSuperAdmin && <div className="admin-control-body">
         <p className="admin-note">Database dumps are separate from configuration restore points. Configure pg_dump and durable S3 or persistent storage before production use.</p>
-        <button type="button" className="admin-action primary" disabled={busy} onClick={() => void createBackup()}>Create database backup</button>
+        {manualBackupSupported ? <button type="button" className="admin-action primary" disabled={busy} onClick={() => void createBackup()}>Create database backup</button> : <a className="admin-action primary" href="https://github.com/stanleymawuli-byte/STANBRIDGE-AIRWAYS/actions/workflows/database-backup.yml" target="_blank" rel="noreferrer">Run backup workflow in GitHub Actions</a>}
         <div className="admin-list"><h3>Backup history</h3>{backups.map((item) => <div className="admin-list-row" key={item.id}><div><strong>{item.filename}</strong><small>{new Date(item.createdAt).toLocaleString()} · {formatBytes(item.sizeBytes)} · {item.storageType} · SHA-256 {item.sha256.slice(0, 16)}…</small></div><a className="admin-action" href={"/api/admin/backups/" + encodeURIComponent(item.id)}>Download backup</a></div>)}{backups.length === 0 && <p className="admin-empty">No database backups recorded.</p>}</div>
       </div>}
       {tab === "system" && <div className="admin-control-body">
