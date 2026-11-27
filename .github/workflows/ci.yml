@@ -33,3 +33,8 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npm run lint
+      - name: Check Node scripts
+        run: |
+          node --check prisma/seed.mjs
+          node --check scripts/backup-postgres.mjs
+          node --check scripts/password-hash-demo.mjs
