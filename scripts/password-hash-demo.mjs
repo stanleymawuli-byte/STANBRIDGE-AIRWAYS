@@ -1,0 +1,21 @@
+import { createHmac } from "node:crypto";
+import { hashPassword, verifyPassword } from "better-auth/crypto";
+
+const encodedPepper = process.env.PASSWORD_PEPPER;
+const password = process.env.DEMO_HASH_PASSWORD;
+if (!encodedPepper || !password) throw new Error("Set PASSWORD_PEPPER and DEMO_HASH_PASSWORD in your local environment.");
+const pepper = Buffer.from(encodedPepper, "base64");
+if (pepper.length < 32) throw new Error("PASSWORD_PEPPER must decode to at least 32 random bytes.");
+if (password.length < 12) throw new Error("DEMO_HASH_PASSWORD must be at least 12 characters.");
+const pepperedPassword = createHmac("sha256", pepper).update(password, "utf8").digest("base64url");
+const firstHash = await hashPassword(pepperedPassword);
+const secondHash = await hashPassword(pepperedPassword);
+const firstVerifies = await verifyPassword({ hash: firstHash, password: pepperedPassword });
+const secondVerifies = await verifyPassword({ hash: secondHash, password: pepperedPassword });
+console.log("Pepper applied before hashing: yes");
+console.log("Same password generated two different salted hashes: " + (firstHash !== secondHash ? "yes" : "no"));
+console.log("First hash verifies: " + firstVerifies);
+console.log("Second hash verifies: " + secondVerifies);
+console.log("Hash A: " + firstHash);
+console.log("Hash B: " + secondHash);
+console.log("The plaintext password and pepper are never printed.");
