@@ -35,3 +35,8 @@ Local classroom test only:
 
 ## User roles and account deletion
 Staff roles are SUPER_ADMIN, OPERATIONS_MANAGER, BOOKING_AGENT and FINANCE_OFFICER; public registration always assigns CUSTOMER. Staff access requires enrolled 2FA. The final super-admin must remain protected from removal. Deleting a user must remove the account and associated sessions/credentials/2FA data; review retention obligations before deleting bookings and financial records.
+
+
+## Live salt and pepper demonstration
+
+Set `PASSWORD_PEPPER` and a unique `DEMO_HASH_PASSWORD` in your local environment, then run `npm run security:password-demo`. The script applies the same HMAC-SHA256 pepper step and Better Auth password hasher used by the application, hashes the same input twice, and shows that the resulting salted hashes differ while both verify. It never prints the plaintext password or pepper. Do not use a real account password for this classroom demonstration.
