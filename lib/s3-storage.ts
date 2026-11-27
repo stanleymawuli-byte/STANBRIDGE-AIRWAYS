@@ -52,7 +52,7 @@ export async function putFileInS3(key: string, filePath: string) {
 }
 
 export async function getS3Object(key: string) {
-  const date = new Date().toISOString().replace(/[:-]|\\.\\d{3}/g, "");
+  const date = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
   const signed = signedRequest("GET", key, hash(""), date);
   const response = await fetch(signed.url, { method: "GET", headers: signed.headers, cache: "no-store" });
   if (!response.ok) throw new Error("AWS S3 download failed (" + response.status + ").");
