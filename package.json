@@ -16,7 +16,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "node prisma/seed.mjs",
-    "backup:trigger": "node scripts/trigger-backup.mjs"
+    "backup:trigger": "node scripts/backup-postgres.mjs"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.7.25",
