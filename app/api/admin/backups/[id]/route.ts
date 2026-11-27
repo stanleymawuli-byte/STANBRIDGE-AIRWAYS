@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
+import { Readable } from "node:stream";
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
@@ -36,7 +37,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     const digest = createHash("sha256");
     for await (const chunk of createReadStream(filePath)) digest.update(chunk);
     if (digest.digest("hex") !== backup.sha256) return NextResponse.json({ error: "Backup checksum verification failed." }, { status: 409 });
-    return new NextResponse(createReadStream(filePath) as unknown as BodyInit, { headers: { "Content-Type": "application/octet-stream", "Content-Disposition": "attachment; filename=\"" + backup.filename + "\"", "Content-Length": String(fileStats.size), "Cache-Control": "no-store" } });
+    return new NextResponse(Readable.toWeb(createReadStream(filePath)) as ReadableStream, { headers: { "Content-Type": "application/octet-stream", "Content-Disposition": "attachment; filename=\"" + backup.filename + "\"", "Content-Length": String(fileStats.size), "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Local backup download failed", error);
     return NextResponse.json({ error: "Could not retrieve the backup file." }, { status: 404 });
