@@ -24,7 +24,7 @@ function validatePassword(password, email) {
     classes < 3 ||
     common.some((word) => lower.includes(word)) ||
     lower.includes(email.split("@")[0].toLowerCase()) ||
-    /(.)\\1{5,}/.test(password) ||
+    /(.)\1{5,}/.test(password) ||
     /(0123456789|1234567890|9876543210)/.test(password)
   ) {
     throw new Error("Use a unique 12–128 character password with at least three character types; avoid common words and predictable patterns.");
@@ -41,7 +41,7 @@ async function main() {
   const password = required("ADMIN_PASSWORD");
   const pepper = Buffer.from(required("PASSWORD_PEPPER"), "base64");
   if (pepper.length < 32) throw new Error("PASSWORD_PEPPER must decode to at least 32 random bytes.");
-  if (!/^\\S+@\\S+\\.\\S+$/.test(email)) throw new Error("ADMIN_EMAIL must be a valid email address.");
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("ADMIN_EMAIL must be a valid email address.");
   if (password === process.env.BETTER_AUTH_SECRET || password === process.env.PASSWORD_PEPPER) {
     throw new Error("Choose a password different from the application secrets.");
   }
