@@ -78,3 +78,26 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Could not update this user role." }, { status: 500 });
   }
 }
+
+
+export async function DELETE(request: NextRequest) {
+  const session = await getStaffSession();
+  if (!session || session.user.role !== "SUPER_ADMIN") return NextResponse.json({ error: "Super-admin access required." }, { status: 403 });
+  let body: { userId?: string };
+  try { body = await request.json() as { userId?: string }; }
+  catch { return NextResponse.json({ error: "A valid JSON request body is required." }, { status: 400 }); }
+  if (!body.userId || typeof body.userId !== "string") return NextResponse.json({ error: "userId is required." }, { status: 400 });
+  if (body.userId === session.user.id) return NextResponse.json({ error: "You cannot delete your own active super-admin account." }, { status: 409 });
+  const target = await prisma.user.findUnique({ where: { id: body.userId }, select: { id: true, role: true } });
+  if (!target) return NextResponse.json({ error: "User not found." }, { status: 404 });
+  if (target.role === "SUPER_ADMIN" && await prisma.user.count({ where: { role: "SUPER_ADMIN" } }) <= 1) {
+    return NextResponse.json({ error: "At least one super-admin must remain." }, { status: 409 });
+  }
+  try {
+    await prisma.user.delete({ where: { id: target.id } });
+    return NextResponse.json({ success: true, deletedUserId: target.id });
+  } catch (error) {
+    console.error("Admin user deletion failed", error);
+    return NextResponse.json({ error: "Could not permanently delete this user." }, { status: 500 });
+  }
+}
