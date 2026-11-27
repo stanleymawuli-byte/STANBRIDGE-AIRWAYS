@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-
-export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { verifyPaystackSignature } from "@/lib/paystack";
 import { createAmadeusOrderForPaidBooking } from "@/lib/amadeus-orders";
 import { sendBookingConfirmationNotifications } from "@/lib/notifications";
+
+export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
