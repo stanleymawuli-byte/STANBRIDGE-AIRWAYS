@@ -20,13 +20,15 @@ AWS account creation must be completed by the project owner at https://aws.amazo
 The application uploads each backup to the private S3 bucket using AWS Signature Version 4 and stores its SHA-256 checksum in the database. Single-part uploads are limited to 5 GB per object; larger dumps require multipart upload before use. Local storage is supported only when `BACKUP_DIRECTORY` points to durable persistent storage. An ephemeral web filesystem is not a backup strategy.
 
 ## Scheduled backups
-The endpoint `POST /api/internal/backup` is protected by a constant-time comparison against `CRON_SECRET` (at least 32 random characters). To schedule it:
-1. Set the same `CRON_SECRET` in the web service and scheduled-job environment.
-2. Set `APP_URL` in the scheduled-job environment to the deployed HTTPS application URL.
-3. Create a Render Cron Job (or equivalent scheduler) that runs `npm ci && npm run backup:trigger` once daily at a quiet UTC hour, for example 02:00 UTC.
-4. Confirm the backup appears in the admin backup history and download one sample before relying on the schedule.
+The project includes `.github/workflows/database-backup.yml`. It runs daily at 02:00 UTC after it is merged into the repository's default branch, and it can also be started manually from GitHub Actions.
 
-The trigger script runs in the scheduled job, but `pg_dump` runs inside the web service that handles the protected endpoint. Therefore the web service itself must have the PostgreSQL client installed and network access to the database. Do not enable the schedule until a manual backup has succeeded.
+1. In GitHub repository **Settings → Secrets and variables → Actions**, add secrets `BACKUP_DATABASE_URL`, `CRON_SECRET`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Add `AWS_SESSION_TOKEN` only when using temporary credentials.
+2. Add Actions variables `STANBRIDGE_APP_URL`, `AWS_REGION` and `AWS_S3_BUCKET`.
+3. In the Vercel project environment, set `CRON_SECRET`, `AWS_REGION`, `AWS_S3_BUCKET`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` so the application can authenticate the backup registration request and download private S3 objects.
+4. The GitHub Actions runner installs PostgreSQL client tools, executes `scripts/backup-postgres.mjs`, streams a custom-format dump to private S3, calculates SHA-256 and registers metadata through `POST /api/internal/backup`.
+5. After the workflow completes, open **Operations → System administration → Database backups** and confirm the new record appears. Download a sample and verify its checksum.
+
+The Vercel web function does not run `pg_dump`; the dedicated GitHub Actions worker does. The super-admin backup panel links directly to the workflow for manual runs. The separate local/Render backup API is available only when the host can run `pg_dump` and has durable storage. Do not rely on an ephemeral serverless filesystem.
 
 ## Kleopatra public/private key demonstration
 1. Install Gpg4win (which includes Kleopatra) from the official Gpg4win website on your Windows computer.
