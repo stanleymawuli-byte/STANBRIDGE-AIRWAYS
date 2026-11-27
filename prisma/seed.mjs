@@ -16,7 +16,7 @@ const demoUsers = [
 ];
 
 function validatePassword(password, email) {
-  const weak = ["password", "qwerty", "welcome", "admin", "stanbridge", "airways", "123456", "iloveyou", "letmein", "football", "monkey", "dragon"];
+  const weak = ["password", "passw0rd", "p@ssword", "qwerty", "qwertyuiop", "welcome", "welcome1", "letmein", "letmein1", "admin", "admin123", "stanbridge", "airways", "iloveyou", "monkey", "dragon", "changeme", "123456", "12345678", "123456789", "abc123", "password1", "football", "baseball", "sunshine", "princess", "trustno1", "whatever", "secret", "master", "login", "pass123", "root", "user", "test", "shadow", "superman", "michael", "ashley", "freedom", "hello123", "zaq12wsx", "1q2w3e4r"];
   const normalized = password.toLowerCase();
   const classes = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((re) => re.test(password)).length;
   if (password.length < 12 || password.length > 128 || classes < 3 || weak.some((term) => normalized.includes(term)) || normalized.includes(email.split("@")[0].toLowerCase()) || /(.)\1{5,}/.test(password) || /(0123456789|1234567890|9876543210)/.test(password)) {
