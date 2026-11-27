@@ -42,3 +42,16 @@ The Vercel web function does not run `pg_dump`; the dedicated GitHub Actions wor
 
 ## Deployment checks
 Before deploying a release, run `npm ci`, `npx prisma validate`, `npx prisma generate`, `npm run lint`, `npm run typecheck` and `npm run build`. Configure the production database, APP_URL, Better Auth secret, password pepper, email sender, Amadeus credentials, Paystack test/live credentials, S3 settings and CRON_SECRET in the hosting provider's secret environment. Complete an end-to-end booking/payment test with provider sandbox credentials before switching any payment integration to live mode.
+
+## Production database migrations
+
+Normal Vercel builds only run Prisma Client generation and Next.js compilation; they do not run migrations. This is deliberate because Preview and Production may share database environment variables.
+
+Before applying a new migration:
+1. Create and verify a database backup.
+2. Add the intended production connection as the GitHub Actions secret `PRODUCTION_DATABASE_URL`.
+3. Review the migration SQL in `prisma/migrations`.
+4. Open **Actions → StanBridge production database migration → Run workflow** and type `I_HAVE_VERIFIED_BACKUP`.
+5. Confirm the workflow succeeds before promoting the release.
+
+Do not run the migration workflow until the backup has been verified and the production change has been approved.
