@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AdminControlCenter } from "@/components/admin-control-center";
 
 type Metrics = {
   customers: number;
@@ -252,6 +253,7 @@ export function AdminDashboard({ role }: { role: string }) {
           </div>
         )}
       </section>}
+      <AdminControlCenter role={role} />
     </section>
   );
 }
