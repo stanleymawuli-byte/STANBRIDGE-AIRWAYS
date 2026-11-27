@@ -40,3 +40,13 @@ Staff roles are SUPER_ADMIN, OPERATIONS_MANAGER, BOOKING_AGENT and FINANCE_OFFIC
 ## Live salt and pepper demonstration
 
 Set `PASSWORD_PEPPER` and a unique `DEMO_HASH_PASSWORD` in your local environment, then run `npm run security:password-demo`. The script applies the same HMAC-SHA256 pepper step and Better Auth password hasher used by the application, hashes the same input twice, and shows that the resulting salted hashes differ while both verify. It never prints the plaintext password or pepper. Do not use a real account password for this classroom demonstration.
+
+## Four role accounts and sample records
+1. Copy `.env.example` to `.env.local`.
+2. Generate a unique 32-byte pepper, for example in PowerShell: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Put the output in `PASSWORD_PEPPER`. Generate a separate random `BETTER_AUTH_SECRET`.
+3. Set four different, strong values for `DEMO_SUPER_ADMIN_PASSWORD`, `DEMO_OPERATIONS_PASSWORD`, `DEMO_BOOKING_PASSWORD` and `DEMO_FINANCE_PASSWORD`. Never commit `.env.local`.
+4. Run `npm ci`, `npx prisma generate`, apply the development database migrations, then run `npm run db:seed`.
+5. The seed creates SUPER_ADMIN, OPERATIONS_MANAGER, BOOKING_AGENT and FINANCE_OFFICER accounts plus three clearly labelled cancelled demonstration bookings. It does not enable staff 2FA; each staff member must sign in to `/account`, enroll an authenticator and save backup codes before accessing `/admin`.
+6. Run `docs/sql-demonstration.sql` against the local database to inspect usernames and stored password hashes. Keep the output local and never paste hashes into public reports.
+
+The seed is idempotent for its demo emails and booking references. Re-running it updates the demo account password hashes from the current environment values.
