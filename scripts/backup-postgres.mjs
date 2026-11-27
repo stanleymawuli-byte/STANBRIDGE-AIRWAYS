@@ -26,7 +26,7 @@ function signedS3Request(method, key, payloadHash, date, config) {
   const canonicalRequest = [method, uri, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
   const shortDate = date.slice(0, 8);
   const scope = shortDate + "/" + config.region + "/s3/aws4_request";
-  const stringToSign = ["AWS4-HMAC-SHA256", date, scope, sha256(canonicalRequest)].join("\\n");
+  const stringToSign = ["AWS4-HMAC-SHA256", date, scope, sha256(canonicalRequest)].join("\n");
   const dateKey = hmac("AWS4" + config.secretKey, shortDate);
   const regionKey = hmac(dateKey, config.region);
   const serviceKey = hmac(regionKey, "s3");
