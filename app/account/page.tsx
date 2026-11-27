@@ -411,7 +411,7 @@ export default async function AccountPage({
 
             {/* Two-Factor Authentication Settings Component */}
             <div className="bg-white border border-[#e8e4da] rounded-2xl p-6 shadow-sm">
-              <TwoFactorSettings enabled={session.user.twoFactorEnabled ?? false} />
+              <TwoFactorSettings enabled={session.user.twoFactorEnabled ?? false} required={Boolean(isStaff)} />
             </div>
 
             {/* Travel Assistance Card */}
