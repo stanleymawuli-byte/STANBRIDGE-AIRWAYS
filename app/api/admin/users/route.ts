@@ -97,6 +97,7 @@ export async function DELETE(request: NextRequest) {
       const target = await tx.user.findUnique({ where: { id: body.userId }, select: { id: true, role: true } });
       if (!target) throw new Error("USER_NOT_FOUND");
       if (target.role === "SUPER_ADMIN" && await tx.user.count({ where: { role: "SUPER_ADMIN" } }) <= 1) throw new Error("LAST_SUPER_ADMIN");
+      await tx.auditLog.updateMany({ where: { entityId: target.id }, data: { entityId: null } });
       await tx.auditLog.create({ data: { actorId: session.user.id, action: "USER_DELETED", entityType: "User", entityId: null, metadata: { deletedRole: target.role } } });
       await tx.user.delete({ where: { id: target.id } });
     }, { isolationLevel: "Serializable" });
