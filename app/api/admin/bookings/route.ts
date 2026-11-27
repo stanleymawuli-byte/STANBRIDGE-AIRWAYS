@@ -73,16 +73,20 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
-  const [updated] = await prisma.$transaction([
-    prisma.booking.update({
+  const updated = await prisma.$transaction(async (tx) => {
+    const changed = await tx.booking.update({
       where: { id: booking.id },
       data: { status: "CANCELLED" },
       select: { id: true, reference: true, status: true },
-    }),
-    prisma.payment.updateMany({
+    });
+    await tx.payment.updateMany({
       where: { bookingId: booking.id, status: "PENDING" },
       data: { status: "ABANDONED" },
-    }),
-  ]);
+    });
+    await tx.auditLog.create({
+      data: { actorId: session.user.id, action: "BOOKING_CANCELLED_BY_STAFF", entityType: "Booking", entityId: booking.id, metadata: { reference: booking.reference, role: session.user.role } },
+    });
+    return changed;
+  });
   return NextResponse.json({ booking: updated });
 }

@@ -3,18 +3,22 @@
   "version": "1.0.0",
   "private": true,
   "engines": {
-    "node": ">=20.9.0"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "next dev",
-    "build": "prisma migrate deploy && prisma generate && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:seed": "node prisma/seed.mjs",
+    "backup:trigger": "node scripts/backup-postgres.mjs",
+    "security:password-demo": "node scripts/password-hash-demo.mjs",
+    "admin:reset": "node --env-file=.env.local scripts/reset-admin-account.mjs"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.7.25",
@@ -43,5 +47,10 @@
   "overrides": {
     "deepmerge-ts": "8.0.2",
     "postcss": "$postcss"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "prisma@6.19.3": true
   }
 }

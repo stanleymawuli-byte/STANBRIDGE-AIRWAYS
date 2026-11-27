@@ -57,6 +57,10 @@ model User {
   accounts         Account[]
   twoFactor        TwoFactor?
   bookings         Booking[]
+  auditLogs        AuditLog[]
+  configurationSnapshots ConfigurationSnapshot[]
+  backupsCreated   BackupRecord[]
+  settingsUpdated  SystemSetting[]
 
   @@index([role])
 }
@@ -207,4 +211,55 @@ model Payment {
 
   @@index([bookingId])
   @@index([status])
+}
+
+ 
+model SystemSetting {
+  key         String   @id
+  value       Json
+  updatedById String?
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt   DateTime @updatedAt
+}
+
+model ConfigurationSnapshot {
+  id          String   @id @default(cuid())
+  name        String
+  settings    Json
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@index([createdById, createdAt])
+}
+
+model BackupRecord {
+  id          String   @id @default(cuid())
+  filename    String
+  storageKey  String
+  storageType String   @default("LOCAL")
+  status      String   @default("COMPLETED")
+  sizeBytes   BigInt
+  sha256      String
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+  @@index([action, createdAt])
 }

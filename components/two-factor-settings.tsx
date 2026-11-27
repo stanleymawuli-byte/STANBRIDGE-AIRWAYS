@@ -20,7 +20,7 @@ type Enrollment = {
   backupCodes: string[];
 };
 
-export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
+export function TwoFactorSettings({ enabled, required = false }: { enabled: boolean; required?: boolean }) {
   const [isEnabled, setIsEnabled] = useState(enabled);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
@@ -193,7 +193,7 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
           <p className="text-xs text-[#74818b] mt-0.5">
             {isEnabled 
               ? "Your account is protected with Google Authenticator, Microsoft Authenticator, or Apple Keychain." 
-              : "Optional. Add an extra layer of verification using an authenticator app (Google Authenticator, Microsoft, or Apple)."}
+              : required ? "Required for airline staff before accessing administration and operations." : "Optional. Add an extra layer of verification using an authenticator app (Google Authenticator, Microsoft, or Apple)."}
           </p>
         </div>
       </div>
@@ -224,13 +224,13 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
               )}
             </button>
 
-            <button
+            {!required && <button
               type="button"
               onClick={() => setShowDisableForm(!showDisableForm)}
               className="text-xs text-rose-600 hover:text-rose-700 underline underline-offset-2 ml-auto font-medium"
             >
               {showDisableForm ? "Cancel" : "Disable 2FA"}
-            </button>
+            </button>}
           </div>
 
           {/* ACTIVE QR CODE DRAWER */}
@@ -334,7 +334,7 @@ export function TwoFactorSettings({ enabled }: { enabled: boolean }) {
           )}
 
           {/* Disable confirmation form */}
-          {showDisableForm && (
+          {showDisableForm && !required && (
             <form onSubmit={disableTwoFactor} className="p-4 bg-red-50/60 border border-red-200 rounded-xl space-y-2.5">
               <p className="text-xs text-red-900 font-medium">Confirm your password to disable Two-Factor Authentication:</p>
               <div className="flex gap-2">

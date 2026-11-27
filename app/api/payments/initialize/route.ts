@@ -9,8 +9,13 @@ export async function POST(request: NextRequest) {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
-  const body = (await request.json()) as { bookingId?: string };
-  if (!body.bookingId) return NextResponse.json({ error: "bookingId is required." }, { status: 400 });
+  let body: { bookingId?: string };
+  try {
+    body = await request.json() as { bookingId?: string };
+  } catch {
+    return NextResponse.json({ error: "A valid JSON request body is required." }, { status: 400 });
+  }
+  if (!body.bookingId || typeof body.bookingId !== "string") return NextResponse.json({ error: "bookingId is required." }, { status: 400 });
 
   const booking = await prisma.booking.findFirst({
     where: { id: body.bookingId, userId: session.user.id },
@@ -40,13 +45,21 @@ export async function POST(request: NextRequest) {
       { status: 409 },
     );
   }
+  const latestPayment = booking.payments[0];
+  if (latestPayment?.status === "PENDING" && latestPayment.authorizationUrl) {
+    return NextResponse.json({ payment: { id: latestPayment.id, reference: latestPayment.reference, authorizationUrl: latestPayment.authorizationUrl } });
+  }
   const email = booking.passengers[0]?.email?.trim() || session.user.email;
   const amountMinor = Math.round(Number(booking.fareAmount) * 100);
+  if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) {
+    return NextResponse.json({ error: "The booking amount is invalid for payment processing." }, { status: 409 });
+  }
   const reference = `SBP-${randomBytes(8).toString("hex").toUpperCase()}`;
 
   const appBaseUrl =
     process.env.APP_URL?.replace(/\/$/, "") ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+  if (!appBaseUrl) return NextResponse.json({ error: "APP_URL is not configured." }, { status: 503 });
 
   try {
     const initialized = await initializePaystackPayment({

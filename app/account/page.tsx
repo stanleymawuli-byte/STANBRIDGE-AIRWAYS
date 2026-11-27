@@ -45,7 +45,8 @@ export default async function AccountPage({
         const transaction = await verifyPaystackPayment(reference);
         if (
           transaction?.status === "success" &&
-          (transaction.amount === payment.amountMinor || transaction.amount === 0)
+          transaction.reference === payment.reference &&
+          transaction.amount === payment.amountMinor
         ) {
           const [, bookingUpdated] = await prisma.$transaction([
             prisma.payment.update({
@@ -410,7 +411,7 @@ export default async function AccountPage({
 
             {/* Two-Factor Authentication Settings Component */}
             <div className="bg-white border border-[#e8e4da] rounded-2xl p-6 shadow-sm">
-              <TwoFactorSettings enabled={session.user.twoFactorEnabled ?? false} />
+              <TwoFactorSettings enabled={session.user.twoFactorEnabled ?? false} required={Boolean(isStaff)} />
             </div>
 
             {/* Travel Assistance Card */}

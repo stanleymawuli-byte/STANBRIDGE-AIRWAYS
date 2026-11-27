@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import {
   AmadeusConfigurationError,
   searchFlightOffers,
@@ -14,6 +15,11 @@ const travelClasses: Record<string, string> = {
 };
 
 export async function GET(request: NextRequest) {
+  const runtimeSettings = await prisma.systemSetting.findMany({ where: { key: { in: ["maintenanceMode", "bookingEnabled"] } } });
+  const settings = Object.fromEntries(runtimeSettings.map((item) => [item.key, item.value]));
+  if (settings.maintenanceMode === true) return NextResponse.json({ error: "Flight search is temporarily unavailable during scheduled maintenance." }, { status: 503 });
+  if (settings.bookingEnabled === false) return NextResponse.json({ error: "Online booking is currently disabled." }, { status: 403 });
+
   const parameters = request.nextUrl.searchParams;
   const origin = parameters.get("origin")?.trim().toUpperCase();
   const destination = parameters.get("destination")?.trim().toUpperCase();

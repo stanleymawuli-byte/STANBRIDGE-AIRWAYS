@@ -29,13 +29,22 @@ export async function PATCH(
     where: { id, userId: session.user.id },
   });
   if (!booking) return NextResponse.json({ error: "Booking not found." }, { status: 404 });
-  if (booking.status === "CANCELLED") {
-    return NextResponse.json({ error: "This booking can no longer be cancelled." }, { status: 409 });
+  if (booking.status !== "PENDING_PAYMENT") {
+    return NextResponse.json(
+      { error: "Only bookings awaiting payment can be cancelled online. Confirmed bookings require an approved refund workflow." },
+      { status: 409 },
+    );
   }
 
-  const updated = await prisma.booking.update({
-    where: { id: booking.id },
-    data: { status: "CANCELLED" },
-  });
+  const [updated] = await prisma.$transaction([
+    prisma.booking.update({
+      where: { id: booking.id },
+      data: { status: "CANCELLED" },
+    }),
+    prisma.payment.updateMany({
+      where: { bookingId: booking.id, status: "PENDING" },
+      data: { status: "ABANDONED" },
+    }),
+  ]);
   return NextResponse.json({ booking: updated });
 }
