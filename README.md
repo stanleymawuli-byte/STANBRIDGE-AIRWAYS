@@ -115,3 +115,12 @@ The project includes the original landing page, server-side Amadeus flight searc
 8. Administration and operations dashboards.
 9. Reports, audit logs and backup management.
 10. Security/integration testing and deployment preparation.
+
+
+## Security and system administration additions
+
+The development branch includes mandatory staff 2FA checks, super-admin user deletion with last-admin protection, four-role demo seed accounts, report tabs, live system state, audit logs, configuration-only restore points, PostgreSQL backup creation with SHA-256 verification, optional private AWS S3 storage, and a protected scheduled-backup endpoint. See `docs/security-demonstration.md` and `docs/mobile-aws-deployment.md` before running the seed or deploying.
+
+## Mobile app
+
+The application is an installable Progressive Web App. Open the HTTPS site on a phone and use the browser's **Install app** / **Add to Home Screen** option. Private account, admin, API and payment data are not cached offline. It is not a native app-store package.
