@@ -113,6 +113,22 @@ export function AdminDashboard({ role }: { role: string }) {
     }
   }
 
+  async function deleteUser(user: AdminUser) {
+    const confirmed = window.confirm("Permanently delete " + user.name + " (" + user.email + ")? This removes the account, login credentials, sessions, 2FA record and linked bookings, passengers, tickets and payments. This cannot be undone.");
+    if (!confirmed) return;
+    setUpdating(user.id);
+    setError("");
+    try {
+      await responseJson(await fetch("/api/admin/users", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user.id }) }));
+      setUsers((current) => current.filter((item) => item.id !== user.id));
+      await loadDashboard();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not delete this user.");
+    } finally {
+      setUpdating("");
+    }
+  }
+
   async function changeRole(userId: string, newRole: string) {
     setUpdating(userId);
     setError("");
@@ -217,7 +233,7 @@ export function AdminDashboard({ role }: { role: string }) {
         {loading ? <p className="admin-empty">Loading users...</p> : (
           <div className="admin-table-wrap">
             <table className="admin-table">
-              <thead><tr><th>User</th><th>Verification</th><th>2FA</th><th>Bookings</th><th>Role</th></tr></thead>
+              <thead><tr><th>User</th><th>Verification</th><th>2FA</th><th>Bookings</th><th>Role</th><th>Account</th></tr></thead>
               <tbody>{users.map((user) => (
                 <tr key={user.id}>
                   <td><strong>{user.name}</strong><small>{user.email}</small></td>
@@ -229,6 +245,7 @@ export function AdminDashboard({ role }: { role: string }) {
                       {roles.map((userRole) => <option key={userRole} value={userRole}>{userRole.replaceAll("_", " ")}</option>)}
                     </select>
                   </td>
+                  <td><button className="admin-action" disabled={updating === user.id} onClick={() => void deleteUser(user)}>Delete user</button></td>
                 </tr>
               ))}</tbody>
             </table>
