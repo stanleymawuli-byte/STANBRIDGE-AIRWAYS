@@ -45,6 +45,7 @@ export default async function AccountPage({
         const transaction = await verifyPaystackPayment(reference);
         if (
           transaction?.status === "success" &&
+          transaction.reference === payment.reference &&
           (transaction.amount === payment.amountMinor || transaction.amount === 0)
         ) {
           const [, bookingUpdated] = await prisma.$transaction([
