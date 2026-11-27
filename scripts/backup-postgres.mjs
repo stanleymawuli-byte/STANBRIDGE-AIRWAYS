@@ -10,7 +10,7 @@ function required(name) { const value = process.env[name]?.trim(); if (!value) t
 function postgresEnvironment(databaseUrl) {
   const url = new URL(databaseUrl);
   if (url.protocol !== "postgres:" && url.protocol !== "postgresql:") throw new Error("Database URL must use PostgreSQL.");
-  return { ...process.env, PGHOST: url.hostname, PGPORT: url.port || "5432", PGUSER: decodeURIComponent(url.username), PGPASSWORD: decodeURIComponent(url.password), PGDATABASE: decodeURIComponent(url.pathname.replace(/^\\//, "")), PGCONNECT_TIMEOUT: "15", ...(url.searchParams.get("sslmode") ? { PGSSLMODE: url.searchParams.get("sslmode") } : {}) };
+  return { ...process.env, PGHOST: url.hostname, PGPORT: url.port || "5432", PGUSER: decodeURIComponent(url.username), PGPASSWORD: decodeURIComponent(url.password), PGDATABASE: decodeURIComponent(url.pathname.replace(/^\//, "")), PGCONNECT_TIMEOUT: "15", ...(url.searchParams.get("sslmode") ? { PGSSLMODE: url.searchParams.get("sslmode") } : {}) };
 }
 function sha256(value) { return createHash("sha256").update(value).digest("hex"); }
 function hmac(key, value) { return createHmac("sha256", key).update(value).digest(); }
@@ -21,9 +21,9 @@ function signedS3Request(method, key, payloadHash, date, config) {
   const headers = { host, "x-amz-content-sha256": payloadHash, "x-amz-date": date };
   if (config.sessionToken) headers["x-amz-security-token"] = config.sessionToken;
   const names = Object.keys(headers).sort();
-  const canonicalHeaders = names.map((name) => name + ":" + headers[name].trim() + "\\n").join("");
+  const canonicalHeaders = names.map((name) => name + ":" + headers[name].trim() + "\n").join("");
   const signedHeaders = names.join(";");
-  const canonicalRequest = [method, uri, "", canonicalHeaders, signedHeaders, payloadHash].join("\\n");
+  const canonicalRequest = [method, uri, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
   const shortDate = date.slice(0, 8);
   const scope = shortDate + "/" + config.region + "/s3/aws4_request";
   const stringToSign = ["AWS4-HMAC-SHA256", date, scope, sha256(canonicalRequest)].join("\\n");
@@ -43,7 +43,7 @@ async function uploadToS3(key, filePath, config) {
   const digest = createHash("sha256");
   for await (const chunk of createReadStream(filePath)) digest.update(chunk);
   const hashValue = digest.digest("hex");
-  const date = new Date().toISOString().replace(/[:-]|\\.\\d{3}/g, "");
+  const date = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
   const signed = signedS3Request("PUT", key, hashValue, date, config);
   const response = await fetch(signed.url, { method: "PUT", headers: { ...signed.headers, "content-length": String(fileStats.size) }, body: createReadStream(filePath), duplex: "half" });
   if (!response.ok) throw new Error("S3 upload failed (" + response.status + ").");
