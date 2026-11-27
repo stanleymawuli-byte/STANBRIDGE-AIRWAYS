@@ -26,6 +26,11 @@ export async function POST(request: NextRequest) {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
+  const runtimeSettings = await prisma.systemSetting.findMany({ where: { key: { in: ["maintenanceMode", "bookingEnabled"] } } });
+  const settings = Object.fromEntries(runtimeSettings.map((item) => [item.key, item.value]));
+  if (settings.maintenanceMode === true) return NextResponse.json({ error: "Bookings are temporarily unavailable during scheduled maintenance." }, { status: 503 });
+  if (settings.bookingEnabled === false) return NextResponse.json({ error: "Online booking is currently disabled. Please contact support." }, { status: 403 });
+
   const body = (await request.json()) as {
     offerId?: string;
     origin?: string;
