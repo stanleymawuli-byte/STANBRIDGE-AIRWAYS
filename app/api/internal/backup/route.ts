@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   let body: { filename?: string; storageKey?: string; storageType?: string; sizeBytes?: number; sha256?: string };
   try { body = await request.json() as typeof body; }
   catch { return NextResponse.json({ error: "A valid JSON request body is required." }, { status: 400 }); }
-  if (body.storageType !== "S3" || typeof body.filename !== "string" || !/^stanbridge-postgres-[A-Za-z0-9T._-]+\\.dump$/.test(body.filename) || body.storageKey !== "database/" + body.filename || !Number.isSafeInteger(body.sizeBytes) || Number(body.sizeBytes) <= 0 || typeof body.sha256 !== "string" || !/^[a-f0-9]{64}$/i.test(body.sha256)) {
+  if (body.storageType !== "S3" || typeof body.filename !== "string" || !(body.filename.startsWith("stanbridge-postgres-") && body.filename.endsWith(".dump") && /^[A-Za-z0-9T._-]+$/.test(body.filename)) || body.storageKey !== "database/" + body.filename || !Number.isSafeInteger(body.sizeBytes) || Number(body.sizeBytes) <= 0 || typeof body.sha256 !== "string" || !/^[a-f0-9]{64}$/i.test(body.sha256)) {
     return NextResponse.json({ error: "Backup metadata is invalid." }, { status: 400 });
   }
   try {
