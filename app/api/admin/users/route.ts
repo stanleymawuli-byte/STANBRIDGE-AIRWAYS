@@ -60,11 +60,15 @@ export async function PATCH(request: NextRequest) {
           throw new Error("LAST_SUPER_ADMIN");
         }
       }
-      return transaction.user.update({
+      const updated = await transaction.user.update({
         where: { id: target.id },
         data: { role: body.role as "SUPER_ADMIN" | "OPERATIONS_MANAGER" | "BOOKING_AGENT" | "FINANCE_OFFICER" | "CUSTOMER" },
         select: { id: true, name: true, email: true, role: true },
       });
+      await transaction.auditLog.create({
+        data: { actorId: session.user.id, action: "USER_ROLE_CHANGED", entityType: "User", entityId: target.id, metadata: { previousRole: target.role, newRole: body.role } },
+      });
+      return updated;
     }, { isolationLevel: "Serializable" });
     return NextResponse.json({ user: updated });
   } catch (error) {
