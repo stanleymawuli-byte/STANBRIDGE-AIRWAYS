@@ -10,12 +10,13 @@ export async function GET() {
   const session = await getStaffSession();
   if (!session || session.user.role !== "SUPER_ADMIN") return NextResponse.json({ error: "Super-admin access required." }, { status: 403 });
   const backups = await prisma.backupRecord.findMany({ take: 50, orderBy: { createdAt: "desc" }, select: { id: true, filename: true, storageType: true, status: true, sizeBytes: true, sha256: true, createdAt: true } });
-  return NextResponse.json({ backups: backups.map((item) => ({ ...item, sizeBytes: item.sizeBytes.toString() })) });
+  return NextResponse.json({ backups: backups.map((item) => ({ ...item, sizeBytes: item.sizeBytes.toString() })), manualBackupSupported: !process.env.VERCEL });
 }
 
 export async function POST() {
   const session = await getStaffSession();
   if (!session || session.user.role !== "SUPER_ADMIN") return NextResponse.json({ error: "Super-admin access required." }, { status: 403 });
+  if (process.env.VERCEL) return NextResponse.json({ error: "Vercel serverless functions cannot run pg_dump. Run the database-backup workflow from the GitHub Actions tab." }, { status: 409 });
   try {
     const backup = await createDatabaseBackup(session.user.id);
     return NextResponse.json({ backup }, { status: 201 });
