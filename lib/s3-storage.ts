@@ -11,14 +11,14 @@ function awsConfig() {
   if (!bucket || !region || !accessKey || !secretKey) throw new Error("AWS S3 backup environment is incomplete.");
   return { bucket, region, accessKey, secretKey, sessionToken: process.env.AWS_SESSION_TOKEN?.trim() };
 }
-function hash(value) { return createHash("sha256").update(value).digest("hex"); }
-function hmac(key, value) { return createHmac("sha256", key).update(value).digest(); }
-function signedRequest(method, key, payloadHash, date) {
+function hash(value: string | Buffer) { return createHash("sha256").update(value).digest("hex"); }
+function hmac(key: string | Buffer, value: string) { return createHmac("sha256", key).update(value).digest(); }
+function signedRequest(method: "GET" | "PUT", key: string, payloadHash: string, date: string) {
   const c = awsConfig();
   if (!key.startsWith("database/") || key.includes("..") || !/^[A-Za-z0-9._/-]+$/.test(key)) throw new Error("Invalid backup object key.");
   const host = "s3." + c.region + ".amazonaws.com";
   const uri = "/" + c.bucket + "/" + key.split("/").map(encodeURIComponent).join("/");
-  const headers = { host, "x-amz-content-sha256": payloadHash, "x-amz-date": date };
+  const headers: Record<string, string> = { host, "x-amz-content-sha256": payloadHash, "x-amz-date": date };
   if (c.sessionToken) headers["x-amz-security-token"] = c.sessionToken;
   const names = Object.keys(headers).sort();
   const canonicalHeaders = names.map((name) => name + ":" + headers[name].trim() + "\n").join("");
@@ -33,25 +33,25 @@ function signedRequest(method, key, payloadHash, date) {
   const signingKey = hmac(serviceKey, "aws4_request");
   const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex");
   const authorization = "AWS4-HMAC-SHA256 Credential=" + c.accessKey + "/" + scope + ", SignedHeaders=" + signedHeaders + ", Signature=" + signature;
-  const requestHeaders = { "x-amz-content-sha256": payloadHash, "x-amz-date": date, Authorization: authorization };
+  const requestHeaders: Record<string, string> = { "x-amz-content-sha256": payloadHash, "x-amz-date": date, Authorization: authorization };
   if (c.sessionToken) requestHeaders["x-amz-security-token"] = c.sessionToken;
   return { url: "https://" + host + uri, headers: requestHeaders };
 }
 
-export async function putFileInS3(key, filePath) {
+export async function putFileInS3(key: string, filePath: string) {
   const fileStats = await stat(filePath);
   if (fileStats.size > 5 * 1024 * 1024 * 1024) throw new Error("Database dump exceeds the 5 GB single-part S3 upload limit.");
   const digest = createHash("sha256");
   for await (const chunk of createReadStream(filePath)) digest.update(chunk);
   const payloadHash = digest.digest("hex");
-  const date = new Date().toISOString().replace(/[:-]|\\.\\d{3}/g, "");
+  const date = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
   const signed = signedRequest("PUT", key, payloadHash, date);
-  const response = await fetch(signed.url, { method: "PUT", headers: { ...signed.headers, "content-length": String(fileStats.size) }, body: createReadStream(filePath), duplex: "half" });
+  const response = await fetch(signed.url, { method: "PUT", headers: { ...signed.headers, "content-length": String(fileStats.size) }, body: createReadStream(filePath) as unknown as BodyInit, duplex: "half" } as RequestInit & { duplex: "half" });
   if (!response.ok) throw new Error("AWS S3 upload failed (" + response.status + ").");
   return { sizeBytes: fileStats.size, sha256: payloadHash };
 }
 
-export async function getS3Object(key) {
+export async function getS3Object(key: string) {
   const date = new Date().toISOString().replace(/[:-]|\\.\\d{3}/g, "");
   const signed = signedRequest("GET", key, hash(""), date);
   const response = await fetch(signed.url, { method: "GET", headers: signed.headers, cache: "no-store" });
