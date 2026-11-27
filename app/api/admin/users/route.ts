@@ -88,15 +88,19 @@ export async function DELETE(request: NextRequest) {
   catch { return NextResponse.json({ error: "A valid JSON request body is required." }, { status: 400 }); }
   if (!body.userId || typeof body.userId !== "string") return NextResponse.json({ error: "userId is required." }, { status: 400 });
   if (body.userId === session.user.id) return NextResponse.json({ error: "You cannot delete your own active super-admin account." }, { status: 409 });
-  const target = await prisma.user.findUnique({ where: { id: body.userId }, select: { id: true, role: true } });
-  if (!target) return NextResponse.json({ error: "User not found." }, { status: 404 });
-  if (target.role === "SUPER_ADMIN" && await prisma.user.count({ where: { role: "SUPER_ADMIN" } }) <= 1) {
-    return NextResponse.json({ error: "At least one super-admin must remain." }, { status: 409 });
-  }
   try {
-    await prisma.user.delete({ where: { id: target.id } });
-    return NextResponse.json({ success: true, deletedUserId: target.id });
+    await prisma.$transaction(async (tx) => {
+      const target = await tx.user.findUnique({ where: { id: body.userId }, select: { id: true, role: true } });
+      if (!target) throw new Error("USER_NOT_FOUND");
+      if (target.role === "SUPER_ADMIN" && await tx.user.count({ where: { role: "SUPER_ADMIN" } }) <= 1) throw new Error("LAST_SUPER_ADMIN");
+      await tx.auditLog.create({ data: { actorId: session.user.id, action: "USER_DELETED", entityType: "User", entityId: target.id, metadata: { deletedRole: target.role } } });
+      await tx.user.delete({ where: { id: target.id } });
+    }, { isolationLevel: "Serializable" });
+    return NextResponse.json({ success: true, deletedUserId: body.userId });
   } catch (error) {
+    if (error instanceof Error && error.message === "USER_NOT_FOUND") return NextResponse.json({ error: "User not found." }, { status: 404 });
+    if (error instanceof Error && error.message === "LAST_SUPER_ADMIN") return NextResponse.json({ error: "At least one super-admin must remain." }, { status: 409 });
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2034") return NextResponse.json({ error: "A concurrent user change occurred. Reload and try again." }, { status: 409 });
     console.error("Admin user deletion failed", error);
     return NextResponse.json({ error: "Could not permanently delete this user." }, { status: 500 });
   }
