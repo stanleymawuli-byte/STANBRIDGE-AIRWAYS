@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
-import { createWriteStream, createReadStream } from "node:fs";
+import { createWriteStream } from "node:fs";
 import { mkdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { Transform } from "node:stream";
