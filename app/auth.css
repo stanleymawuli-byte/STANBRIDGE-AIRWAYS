@@ -644,3 +644,115 @@
     font-size: 30px;
   }
 }
+
+
+.admin-report-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 16px 0;
+}
+.admin-report-tabs button {
+  border: 1px solid #e3dfd5;
+  border-radius: 7px;
+  background: #fff;
+  color: #53636e;
+  padding: 9px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-report-tabs button[aria-selected="true"],
+.admin-report-tabs button.active {
+  border-color: #c9a66b;
+  background: #f6f1e7;
+  color: #071d32;
+}
+.admin-control-body {
+  display: grid;
+  gap: 16px;
+  padding-top: 8px;
+}
+.admin-control-body h3,
+.admin-list h3 {
+  margin: 8px 0;
+  color: var(--navy);
+  font: 500 19px "Playfair Display", Georgia, serif;
+}
+.admin-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #eeece6;
+}
+.admin-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #efede8;
+  color: #50616c;
+  font-size: 11px;
+}
+.admin-list-row > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.admin-list-row strong {
+  color: var(--navy);
+  overflow-wrap: anywhere;
+}
+.admin-list-row small {
+  color: #879197;
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+.admin-action.primary {
+  background: var(--navy);
+  color: #fff;
+  border-color: var(--navy);
+}
+.admin-integration-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0 16px;
+  margin-top: 14px;
+}
+.admin-control-body .security-form {
+  max-width: 680px;
+}
+.admin-control-body .security-form label {
+  display: grid;
+  gap: 7px;
+  color: #53636e;
+  font-size: 11px;
+  font-weight: 600;
+}
+.admin-control-body .security-form input:not([type="checkbox"]),
+.admin-control-body .security-form textarea,
+.admin-control-body .security-form select {
+  width: 100%;
+  border: 1px solid #e1dfd8;
+  border-radius: 7px;
+  background: #fff;
+  padding: 10px 12px;
+  color: #071d32;
+  font-size: 12px;
+}
+.admin-control-body .security-form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+.admin-control-body .security-form input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: #102b46;
+}
+@media (max-width: 620px) {
+  .admin-list-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
