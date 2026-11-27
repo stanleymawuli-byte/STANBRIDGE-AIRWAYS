@@ -17,7 +17,8 @@
     "db:studio": "prisma studio",
     "db:seed": "node prisma/seed.mjs",
     "backup:trigger": "node scripts/backup-postgres.mjs",
-    "security:password-demo": "node scripts/password-hash-demo.mjs"
+    "security:password-demo": "node scripts/password-hash-demo.mjs",
+    "admin:reset": "node --env-file=.env.local scripts/reset-admin-account.mjs"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.7.25",
